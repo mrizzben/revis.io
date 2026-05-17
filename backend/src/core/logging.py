@@ -50,7 +50,7 @@ async def logging_middleware(request: Request, call_next):
     """Middleware that logs HTTP method, path, status, duration, and client IP."""
     import time
 
-    logger = logging.getLogger("archidrive.http")
+    logger = logging.getLogger("revis.io.http")
     start = time.time()
     response = await call_next(request)
     duration_ms = int((time.time() - start) * 1000)

@@ -1,7 +1,7 @@
 [project]
-name = "archidrive-backend"
+name = "revis.io-backend"
 version = "1.0.0"
-description = "ArchiDrive - Architect-Client Design Portal Backend"
+description = "Revis.io - Architect-Client Design Portal Backend"
 requires-python = ">=3.12"
 
 [tool.ruff]

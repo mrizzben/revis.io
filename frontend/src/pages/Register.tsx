@@ -62,7 +62,7 @@ export default function Register() {
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Create Account</h1>
-          <p className="mt-2 text-gray-600">Get started with ArchiDrive</p>
+          <p className="mt-2 text-gray-600">Get started with Revis.io</p>
         </div>
 
         <div className="card">

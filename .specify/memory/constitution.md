@@ -1,4 +1,4 @@
-# archidrive Constitution
+# revis.io Constitution
 
 ## Core Principles
 

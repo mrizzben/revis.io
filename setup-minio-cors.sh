@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setup MinIO CORS configuration for ArchiDrive
+# Setup MinIO CORS configuration for Revis.io
 # This script configures CORS on the MinIO server to allow browser access to presigned URLs
 
 set -e
@@ -8,7 +8,7 @@ MINIO_ENDPOINT="http://localhost:9000"
 MINIO_CONSOLE="http://localhost:9001"
 MINIO_ROOT_USER="minioadmin"
 MINIO_ROOT_PASSWORD="minioadmin"
-BUCKET_NAME="archidrive"
+BUCKET_NAME="revis.io"
 CORS_CONFIG_FILE="$(dirname "$0")/minio-cors-config.json"
 
 echo "=========================================="
@@ -61,13 +61,13 @@ echo ""
 
 # Configure mc alias
 echo "Configuring MinIO client alias..."
-mc alias set archidrive "${MINIO_ENDPOINT}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}" --api s3v4
+mc alias set revis.io "${MINIO_ENDPOINT}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}" --api s3v4
 
 # Check if bucket exists, create if not
 echo "Checking if bucket '${BUCKET_NAME}' exists..."
-if ! mc ls archidrive/${BUCKET_NAME} > /dev/null 2>&1; then
+if ! mc ls revis.io/${BUCKET_NAME} > /dev/null 2>&1; then
     echo "Creating bucket '${BUCKET_NAME}'..."
-    mc mb archidrive/${BUCKET_NAME}
+    mc mb revis.io/${BUCKET_NAME}
     echo "Bucket created!"
 else
     echo "Bucket '${BUCKET_NAME}' already exists."
@@ -85,7 +85,7 @@ if [ ! -f "${CORS_CONFIG_FILE}" ]; then
 fi
 
 # Apply CORS using mc admin config
-mc admin config set archidrive api cors="$(cat ${CORS_CONFIG_FILE})"
+mc admin config set revis.io api cors="$(cat ${CORS_CONFIG_FILE})"
 
 echo ""
 echo "Restarting MinIO to apply CORS configuration..."

@@ -1,8 +1,8 @@
-# archidrive
+# revis.io
 
-**Git for architects, designers, and graphic design professionals** — a version control and collaboration platform purpose-built for the architecture and design workflow. Just as Git enables developers to track code changes, collaborate, and manage versions, ArchiDrive delivers the same core capabilities tailored for design files including CAD drawings, PDFs, images, and 3D models.
+**Git for architects, designers, and graphic design professionals** — a version control and collaboration platform purpose-built for the architecture and design workflow. Just as Git enables developers to track code changes, collaborate, and manage versions, Revis.io delivers the same core capabilities tailored for design files including CAD drawings, PDFs, images, and 3D models.
 
-`archidrive` is a project focused on delivering a seamless and secure experience. Our core development is guided by three primary principles:
+`revis.io` is a project focused on delivering a seamless and secure experience. Our core development is guided by three primary principles:
 
 - **Ease of Use**: Prioritizing a frictionless and intuitive user experience.
 - **Reactive UI**: Leveraging reactive patterns to ensure a responsive and dynamic interface.
@@ -29,7 +29,7 @@ A real-time web application where architects present design files to clients, tr
 
 ```bash
 # Clone and setup
-git clone <repo-url> && cd archidrive
+git clone <repo-url> && cd revis.io
 
 # Start all services
 docker compose up -d

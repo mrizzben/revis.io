@@ -1,4 +1,4 @@
-# Quickstart Guide: ArchiDrive
+# Quickstart Guide: Revis.io
 
 **Date**: 2026-05-09 | **Feature**: [spec.md](./spec.md)
 
@@ -12,7 +12,7 @@
 
 ```bash
 # Clone and setup
-git clone <repo-url> && cd archidrive
+git clone <repo-url> && cd revis.io
 
 # Start all services
 docker compose up -d
@@ -89,19 +89,19 @@ arq src.services.thumbnail.WorkerSettings
 ```bash
 # Required
 SECRET_KEY=                  # openssl rand -hex 32
-DATABASE_URL=postgresql+asyncpg://archidrive:archidrive@localhost:5432/archidrive
+DATABASE_URL=postgresql+asyncpg://revis.io:revis.io@localhost:5432/revis.io
 REDIS_URL=redis://localhost:6379
 
 # S3 Storage (MinIO for dev)
 S3_ENDPOINT=http://localhost:9000
 S3_ACCESS_KEY=minioadmin
 S3_SECRET_KEY=minioadmin
-S3_BUCKET=archidrive
+S3_BUCKET=revis.io
 S3_REGION=us-east-1
 
 # Email (Resend)
 RESEND_API_KEY=re_xxxxxxxxxxxx
-EMAIL_FROM=Archidrive <__VG_EMAIL_48aa05360795__>
+EMAIL_FROM=Revis.io <__VG_EMAIL_48aa05360795__>
 
 # App
 FRONTEND_URL=http://localhost:5173
@@ -164,7 +164,7 @@ Browser (React SPA)
 ## Project Structure
 
 ```
-archidrive/
+revis.io/
 ├── backend/
 │   ├── src/
 │   │   ├── api/          # FastAPI routes

@@ -50,11 +50,11 @@ def send_verification_email(to_email: str, token: str) -> None:
     verify_url = f"{settings.FRONTEND_URL}/login?verify={token}"
     content = f"""
         <h2>Verify Your Email</h2>
-        <p>Click the button below to verify your email address and activate your ArchiDrive account.</p>
+        <p>Click the button below to verify your email address and activate your Revis.io account.</p>
         <p><a href="{verify_url}" class="button">Verify Email</a></p>
         <p>Or copy and paste this link:</p>
         <p><a href="{verify_url}">{verify_url}</a></p>
-        <p class="footer">This link expires in 24 hours. If you didn't create an ArchiDrive account, you can safely ignore this email.</p>
+        <p class="footer">This link expires in 24 hours. If you didn't create an Revis.io account, you can safely ignore this email.</p>
     """
 
     if not settings.RESEND_API_KEY or settings.RESEND_API_KEY == "re_placeholder":
@@ -64,7 +64,7 @@ def send_verification_email(to_email: str, token: str) -> None:
         resend.Emails.send({
             "from": settings.EMAIL_FROM,
             "to": to_email,
-            "subject": "Verify your ArchiDrive email",
+            "subject": "Verify your Revis.io email",
             "html": _base_wrapper(content),
         })
     except Exception:
@@ -82,7 +82,7 @@ def send_invitation_email(
     invite_url = f"{settings.FRONTEND_URL}/invitation/{token}"
     content = f"""
         <h2>You're Invited!</h2>
-        <p>{invited_by_name} has invited you to collaborate on <strong>{project_name}</strong> via ArchiDrive.</p>
+        <p>{invited_by_name} has invited you to collaborate on <strong>{project_name}</strong> via Revis.io.</p>
         <p>Click below to accept the invitation and create your account:</p>
         <p><a href="{invite_url}" class="button">Accept Invitation</a></p>
         <p>Or copy and paste this link:</p>
@@ -109,7 +109,7 @@ def send_password_reset_email(to_email: str, token: str) -> None:
     reset_url = f"{settings.FRONTEND_URL}/login?reset={token}"
     content = f"""
         <h2>Reset Your Password</h2>
-        <p>Click the button below to reset your ArchiDrive password.</p>
+        <p>Click the button below to reset your Revis.io password.</p>
         <p><a href="{reset_url}" class="button">Reset Password</a></p>
         <p>Or copy and paste this link:</p>
         <p><a href="{reset_url}">{reset_url}</a></p>
@@ -123,7 +123,7 @@ def send_password_reset_email(to_email: str, token: str) -> None:
         resend.Emails.send({
             "from": settings.EMAIL_FROM,
             "to": to_email,
-            "subject": "Reset your ArchiDrive password",
+            "subject": "Reset your Revis.io password",
             "html": _base_wrapper(content),
         })
     except Exception:
@@ -307,7 +307,7 @@ async def send_comment_reply_notification(
         <h2>New Reply</h2>
         <p>{replier_name} replied to your comment on <strong>{file_name}</strong> in <strong>{project_name}</strong>.</p>
         <p><a href="{project_url}" class="button">View Project</a></p>
-        <p class="footer">You're receiving this because someone replied to your comment on ArchiDrive.</p>
+        <p class="footer">You're receiving this because someone replied to your comment on Revis.io.</p>
     """
 
     if settings.RESEND_API_KEY and settings.RESEND_API_KEY != "re_placeholder":

@@ -28,12 +28,12 @@ class Settings(BaseSettings):
     S3_PRESIGNED_ENDPOINT: str | None = None  # External endpoint for presigned URLs (browser-facing)
     S3_ACCESS_KEY: str = ""
     S3_SECRET_KEY: str = ""
-    S3_BUCKET: str = "archidrive"
+    S3_BUCKET: str = "revis.io"
     S3_REGION: str = "us-east-1"
 
     # Email
     RESEND_API_KEY: str = ""
-    EMAIL_FROM: str = "noreply@archidrive.dev"
+    EMAIL_FROM: str = "noreply@revis.io.dev"
 
     # Frontend
     FRONTEND_URL: str = "http://localhost:5173"

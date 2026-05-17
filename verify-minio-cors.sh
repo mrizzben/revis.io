@@ -1,5 +1,5 @@
 #!/bin/bash
-# Verify MinIO CORS Configuration for ArchiDrive
+# Verify MinIO CORS Configuration for Revis.io
 
 echo "=========================================="
 echo "MinIO CORS Verification"
@@ -7,7 +7,7 @@ echo "=========================================="
 echo ""
 
 MINIO_ENDPOINT="http://localhost:9000"
-BUCKET_NAME="archidrive"
+BUCKET_NAME="revis.io"
 FRONTEND_ORIGIN="http://localhost:5173"
 
 # Check if MinIO is running

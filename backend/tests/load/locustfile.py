@@ -1,9 +1,9 @@
-"""Load testing for ArchiDrive API. Run with: locust -f backend/tests/load/locustfile.py"""
+"""Load testing for Revis.io API. Run with: locust -f backend/tests/load/locustfile.py"""
 
 from locust import HttpUser, between, task
 
 
-class ArchiDriveUser(HttpUser):
+class Revis.ioUser(HttpUser):
     wait_time = between(1, 3)
 
     def on_start(self):

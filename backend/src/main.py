@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI) -> Any:
     """Application lifespan: startup and shutdown events."""
     setup_logging()
     logger = logging.getLogger(__name__)
-    logger.info("ArchiDrive API starting")
+    logger.info("Revis.io API starting")
     
     # Ensure MinIO bucket exists
     from src.services.file import ensure_bucket_exists
@@ -37,13 +37,13 @@ async def lifespan(app: FastAPI) -> Any:
     
     # Shutdown
     await settings.close()
-    logger.info("ArchiDrive API shutting down")
+    logger.info("Revis.io API shutting down")
     from src.core.database import engine
     await engine.dispose()
 
 
 app = FastAPI(
-    title="ArchiDrive API",
+    title="Revis.io API",
     version="1.0.0",
     description="Architect-Client Design Portal — REST + WebSocket API",
     lifespan=lifespan,

@@ -1,6 +1,6 @@
 openapi: "3.1.0"
 info:
-  title: ArchiDrive API
+  title: Revis.io API
   version: "1.0.0"
   description: Architect-Client Design Portal — REST + WebSocket API
 servers:
