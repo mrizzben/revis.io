@@ -1,0 +1,829 @@
+openapi: "3.1.0"
+info:
+  title: ArchiDrive API
+  version: "1.0.0"
+  description: Architect-Client Design Portal — REST + WebSocket API
+servers:
+  - url: http://localhost:8000
+    description: Development
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ── Auth ──────────────────────────────────────────────────
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name, role]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                name: { type: string, minLength: 1, maxLength: 255 }
+                role: { type: string, enum: [architect, client] }
+                invitation_token: { type: string, description: "Required for client registration" }
+      responses:
+        "201": { description: User created }
+        "400": { description: Validation error or email already registered }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and receive tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string, description: "User email" }
+                password: { type: string }
+      responses:
+        "200":
+          description: Success
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: refresh_token httpOnly cookie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  token_type: { type: string }
+        "401": { description: Invalid credentials }
+
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      security: []
+      parameters:
+        - in: cookie
+          name: refresh_token
+          schema: { type: string }
+          required: true
+      responses:
+        "200":
+          description: New access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  token_type: { type: string }
+        "401": { description: Invalid or missing refresh token }
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout and clear refresh token cookie
+      responses:
+        "200": { description: Logged out }
+
+  /api/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200": { description: "If email exists, reset link sent" }
+
+  /api/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password with token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token: { type: string }
+                new_password: { type: string, minLength: 8 }
+      responses:
+        "200": { description: Password reset successfully }
+        "400": { description: Invalid or expired token }
+
+  /api/auth/verify-email/{token}:
+    post:
+      tags: [Auth]
+      summary: Verify email address
+      security: []
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Email verified }
+        "400": { description: Invalid or expired token }
+
+  # ── Users ─────────────────────────────────────────────────
+  /api/users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+
+  # ── Firms ─────────────────────────────────────────────────
+  /api/firms:
+    post:
+      tags: [Firms]
+      summary: Create a firm (becomes firm admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 255 }
+      responses:
+        "201":
+          description: Firm created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FirmResponse"
+    get:
+      tags: [Firms]
+      summary: List firms (firm admins see their firm)
+      responses:
+        "200":
+          description: Firm list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FirmResponse"
+
+  /api/firms/{firm_id}/members:
+    get:
+      tags: [Firms]
+      summary: List firm members
+      responses:
+        "200":
+          description: Member list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserResponse"
+    post:
+      tags: [Firms]
+      summary: Add architect to firm (firm admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200": { description: Member added }
+        "404": { description: User not found }
+
+  # ── Projects ──────────────────────────────────────────────
+  /api/projects:
+    get:
+      tags: [Projects]
+      summary: List current user's projects
+      parameters:
+        - in: query
+          name: archived
+          schema: { type: boolean }
+          description: Filter by archive status
+      responses:
+        "200":
+          description: Project list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectResponse"
+    post:
+      tags: [Projects]
+      summary: Create a new project (architect only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 255 }
+                description: { type: string }
+                firm_id: { type: integer, nullable: true }
+      responses:
+        "201":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+
+  /api/projects/{project_id}:
+    get:
+      tags: [Projects]
+      summary: Get project details
+      responses:
+        "200":
+          description: Project detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDetailResponse"
+        "404": { description: Project not found or access denied }
+    patch:
+      tags: [Projects]
+      summary: Update project (architect only)
+      responses:
+        "200": { description: Updated }
+    delete:
+      tags: [Projects]
+      summary: Delete/archive project (architect only)
+      parameters:
+        - in: query
+          name: archive_only
+          schema: { type: boolean, default: true }
+      responses:
+        "204": { description: Deleted/archived }
+
+  /api/projects/{project_id}/updates:
+    get:
+      tags: [Projects]
+      summary: Poll for project updates (WebSocket fallback)
+      parameters:
+        - in: query
+          name: since
+          schema: { type: string, format: date-time }
+          description: ISO 8601 timestamp
+      responses:
+        "200":
+          description: Update check
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  has_updates: { type: boolean }
+                  timestamp: { type: string }
+
+  # ── Invitations ───────────────────────────────────────────
+  /api/projects/{project_id}/invite:
+    post:
+      tags: [Invitations]
+      summary: Invite a client to a project (architect only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "201":
+          description: Invitation sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationResponse"
+
+  /api/invitations/{token}:
+    get:
+      tags: [Invitations]
+      summary: View invitation details (public, before registration)
+      security: []
+      responses:
+        "200":
+          description: Invitation details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email: { type: string }
+                  project_name: { type: string }
+                  invited_by_name: { type: string }
+        "404": { description: Not found or expired }
+
+  # ── Files ──────────────────────────────────────────────────
+  /api/projects/{project_id}/files:
+    get:
+      tags: [Files]
+      summary: List project files
+      parameters:
+        - in: query
+          name: milestone_id
+          schema: { type: integer }
+      responses:
+        "200":
+          description: File list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DesignFileResponse"
+
+  /api/files/upload-url:
+    post:
+      tags: [Files]
+      summary: Get presigned S3 upload URL (≤100MB files, architect only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project_id, filename, content_type, file_size]
+              properties:
+                project_id: { type: integer }
+                milestone_id: { type: integer, nullable: true }
+                filename: { type: string }
+                content_type: { type: string }
+                file_size: { type: integer }
+      responses:
+        "200":
+          description: Upload URL and file key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string, description: "Presigned PUT URL" }
+                  key: { type: string, description: "S3 object key" }
+                  file_id: { type: string, format: uuid }
+
+  /api/files/multipart/initiate:
+    post:
+      tags: [Files]
+      summary: Initiate S3 multipart upload (>100MB, architect only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project_id, filename, content_type, file_size, part_size]
+              properties:
+                project_id: { type: integer }
+                milestone_id: { type: integer, nullable: true }
+                filename: { type: string }
+                content_type: { type: string }
+                file_size: { type: integer }
+                part_size: { type: integer, minimum: 5242880 }
+      responses:
+        "200":
+          description: Upload initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upload_id: { type: string }
+                  key: { type: string }
+                  file_id: { type: string, format: uuid }
+
+  /api/files/multipart/{upload_id}/part-urls:
+    post:
+      tags: [Files]
+      summary: Get presigned URLs for multipart upload parts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key, part_numbers]
+              properties:
+                key: { type: string }
+                part_numbers:
+                  type: array
+                  items: { type: integer }
+                  minItems: 1
+                  maxItems: 100
+      responses:
+        "200":
+          description: Part URLs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  urls:
+                    type: object
+                    additionalProperties: { type: string }
+
+  /api/files/multipart/{upload_id}/complete:
+    post:
+      tags: [Files]
+      summary: Complete multipart upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key, parts]
+              properties:
+                key: { type: string }
+                parts:
+                  type: array
+                  items:
+                    type: object
+                    required: [PartNumber, ETag]
+                    properties:
+                      PartNumber: { type: integer }
+                      ETag: { type: string }
+      responses:
+        "200": { description: Upload completed, thumbnail generation queued }
+
+  /api/files/multipart/{upload_id}/abort:
+    post:
+      tags: [Files]
+      summary: Abort incomplete multipart upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key]
+              properties:
+                key: { type: string }
+      responses:
+        "200": { description: Aborted }
+
+  /api/files/{file_id}/upload-complete:
+    post:
+      tags: [Files]
+      summary: Callback after S3 upload completes (fallback trigger for thumbnails)
+      responses:
+        "200": { description: Processing queued }
+
+  /api/files/{file_id}:
+    get:
+      tags: [Files]
+      summary: Get file details
+      responses:
+        "200":
+          description: File detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DesignFileResponse"
+    delete:
+      tags: [Files]
+      summary: Soft-delete a file (architect only)
+      responses:
+        "204": { description: Deleted }
+
+  /api/files/{file_id}/download:
+    get:
+      tags: [Files]
+      summary: Get presigned download URL
+      responses:
+        "200":
+          description: Download URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+
+  /api/files/{file_id}/thumbnail:
+    get:
+      tags: [Files]
+      summary: Get thumbnail (redirect to presigned S3 URL)
+      parameters:
+        - in: query
+          name: size
+          schema: { type: string, enum: [small, medium], default: small }
+      responses:
+        "302": { description: Redirect to S3 URL }
+        "404": { description: Thumbnail not available }
+
+  /api/files/{file_id}/preview:
+    get:
+      tags: [Files]
+      summary: Get 3D preview (redirect to presigned S3 URL for glTF/GLB)
+      responses:
+        "302": { description: Redirect to S3 URL }
+        "404": { description: Preview not available }
+
+  # ── Milestones ────────────────────────────────────────────
+  /api/projects/{project_id}/milestones:
+    get:
+      tags: [Milestones]
+      summary: List project milestones (ordered by position)
+      responses:
+        "200":
+          description: Milestone list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MilestoneResponse"
+    post:
+      tags: [Milestones]
+      summary: Create a milestone (architect only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 255 }
+                description: { type: string }
+                position: { type: integer }
+      responses:
+        "201":
+          description: Milestone created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MilestoneResponse"
+
+  /api/milestones/{milestone_id}:
+    patch:
+      tags: [Milestones]
+      summary: Update milestone (architect only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                position: { type: integer }
+                is_completed: { type: boolean }
+      responses:
+        "200":
+          description: Updated milestone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MilestoneResponse"
+    delete:
+      tags: [Milestones]
+      summary: Delete milestone (architect only)
+      responses:
+        "204": { description: Deleted }
+
+  # ── Comments ──────────────────────────────────────────────
+  /api/files/{file_id}/comments:
+    get:
+      tags: [Comments]
+      summary: List comments on a file (threaded)
+      responses:
+        "200":
+          description: Comment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CommentResponse"
+    post:
+      tags: [Comments]
+      summary: Add a comment (client or architect)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 5000 }
+                parent_id: { type: integer, nullable: true, description: "For threaded replies" }
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentResponse"
+
+  /api/comments/{comment_id}:
+    patch:
+      tags: [Comments]
+      summary: Edit comment (author only) or mark resolved (architect only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body: { type: string, maxLength: 5000 }
+                is_resolved: { type: boolean }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentResponse"
+    delete:
+      tags: [Comments]
+      summary: Delete comment (author or architect only)
+      responses:
+        "204": { description: Deleted }
+
+  # ── WebSocket ─────────────────────────────────────────────
+  /ws/projects/{project_id}:
+    get:
+      tags: [WebSocket]
+      summary: Real-time project updates
+      description: |
+        WebSocket endpoint for real-time project updates.
+        Connect with: `ws://host/ws/projects/{project_id}?token=<jwt>`
+        
+        Server → Client events:
+        - `{"type": "file_uploaded", "file_id": "uuid", "filename": "..."}`
+        - `{"type": "file_deleted", "file_id": "uuid"}`
+        - `{"type": "file_updated", "file_id": "uuid", "filename": "..."}`
+        - `{"type": "milestone_updated", "milestone_id": 1, "is_completed": true}`
+        - `{"type": "comment_added", "file_id": "uuid", "comment_id": 1}`
+        - `{"type": "ping"}`
+        
+        Client → Server events:
+        - `{"type": "ping"}` → server responds with `{"type": "pong"}`
+      parameters:
+        - in: path
+          name: project_id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: token
+          required: true
+          schema: { type: string }
+          description: JWT access token
+      responses:
+        "101": { description: WebSocket upgrade successful }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UserResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        email: { type: string }
+        name: { type: string }
+        role: { type: string, enum: [architect, client] }
+        firm_id: { type: integer, nullable: true }
+        is_firm_admin: { type: boolean }
+        is_verified: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    FirmResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        member_count: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    ProjectResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        owner_id: { type: integer }
+        firm_id: { type: integer, nullable: true }
+        is_archived: { type: boolean }
+        file_count: { type: integer }
+        milestone_count: { type: integer }
+        completed_milestone_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ProjectDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/ProjectResponse"
+        - type: object
+          properties:
+            milestones:
+              type: array
+              items:
+                $ref: "#/components/schemas/MilestoneResponse"
+            files:
+              type: array
+              items:
+                $ref: "#/components/schemas/DesignFileResponse"
+
+    InvitationResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        email: { type: string }
+        token: { type: string }
+        expires_at: { type: string, format: date-time }
+        is_used: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    DesignFileResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        project_id: { type: integer }
+        milestone_id: { type: integer, nullable: true }
+        filename: { type: string }
+        file_type: { type: string }
+        content_type: { type: string }
+        file_size: { type: integer }
+        thumbnail_status:
+          type: string
+          enum: [pending, processing, complete, failed, unsupported]
+        preview_status: { type: string, nullable: true }
+        is_deleted: { type: boolean }
+        version_number: { type: integer }
+        comment_count: { type: integer }
+        uploaded_by:
+          $ref: "#/components/schemas/UserResponse"
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    MilestoneResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        project_id: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        position: { type: integer }
+        is_completed: { type: boolean }
+        completed_at: { type: string, format: date-time, nullable: true }
+        file_count: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    CommentResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        file_id: { type: string, format: uuid }
+        parent_id: { type: integer, nullable: true }
+        body: { type: string }
+        is_resolved: { type: boolean }
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommentResponse"
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }

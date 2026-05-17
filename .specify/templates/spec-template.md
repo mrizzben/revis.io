@@ -90,6 +90,12 @@
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
 
+### Constitutional Alignment
+
+- **Ease of Use**: [How this feature ensures a frictionless experience]
+- **Reactive UI**: [How this feature utilizes reactive patterns for responsiveness]
+- **Security**: [How this feature adheres to security best practices]
+
 *Example of marking unclear requirements:*
 
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
