@@ -1,6 +1,8 @@
 """File routes: presigned upload/download URLs, multipart, file management."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
@@ -306,6 +308,53 @@ async def get_download_url(
         content_type=file.content_type,
     )
     return RedirectResponse(url=url, status_code=302)
+
+
+@router.patch("/{file_id}")
+async def update_file_milestone(
+    file_id: str,
+    db: DBSession,
+    current_user: User = Depends(require_role("architect")),
+    milestone_id: int | None = Body(None, embed=True),
+):
+    file = await file_service.get_file(db, file_id)
+    await project_service._get_project_with_access(db, file.project_id, current_user)
+
+    if milestone_id is not None:
+        milestone_result = await db.execute(
+            select(Milestone).where(Milestone.id == milestone_id)
+        )
+        milestone = milestone_result.scalar_one_or_none()
+        if not milestone or milestone.project_id != file.project_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Milestone not found in this project",
+            )
+
+    file.milestone_id = milestone_id
+    file.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(file)
+
+    try:
+        ws = get_manager()
+        await ws.broadcast_to_project(
+            file.project_id,
+            {
+                "type": "file_updated",
+                "file_id": str(file.id),
+                "milestone_id": file.milestone_id,
+            },
+            exclude_user_id=current_user.id,
+        )
+    except RuntimeError:
+        pass
+
+    return {
+        "id": str(file.id),
+        "milestone_id": file.milestone_id,
+        "updated_at": file.updated_at.isoformat(),
+    }
 
 
 @router.get("/{file_id}/thumbnail")

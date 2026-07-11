@@ -12,6 +12,7 @@ import type {
   Firm,
   CreateFirmRequest,
   User,
+  UpdateFileMilestoneRequest,
 } from '../../types';
 
 // ── Files ────────────────────────────────────────────────
@@ -110,5 +111,13 @@ export async function addFirmMember(
   email: string,
 ): Promise<{ message: string }> {
   const response = await apiClient.post(`/firms/${firmId}/members`, { email });
+  return response.data;
+}
+
+export async function updateFileMilestone(
+  fileId: string,
+  data: UpdateFileMilestoneRequest,
+): Promise<{ milestone_id: number | null }> {
+  const response = await apiClient.patch(`/files/${fileId}`, data);
   return response.data;
 }

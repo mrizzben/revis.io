@@ -33,15 +33,13 @@ export default function Register() {
       });
 
       if (role === 'architect') {
-        // Auto-login after registration
         try {
           const tokens = await authApi.login(email, password);
           storeLogin(tokens.access_token, null);
-          // Use the token directly for this first request
           const user = await apiClient.get('/users/me', {
             headers: { Authorization: `Bearer ${tokens.access_token}` }
           });
-          storeLogin(tokens.access_token, user.data);  // Update with user data
+          storeLogin(tokens.access_token, user.data);
           navigate('/dashboard', { replace: true });
         } catch {
           navigate('/login', { replace: true });
@@ -58,17 +56,23 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen flex items-center justify-center bg-surface-secondary px-4">
+      <div className="max-w-sm w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Create Account</h1>
-          <p className="mt-2 text-gray-600">Get started with Revis.io</p>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <svg className="w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Revis.io</h1>
+          </div>
+          <p className="text-sm text-gray-500">Create your account</p>
         </div>
 
-        <div className="card">
+        <div className="border border-border bg-white p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{error}</div>
+              <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
             )}
 
             <div>
@@ -77,10 +81,10 @@ export default function Register() {
                 <button
                   type="button"
                   onClick={() => setRole('architect')}
-                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border ${
+                  className={`flex-1 py-2 px-3 text-sm font-medium border ${
                     role === 'architect'
                       ? 'bg-primary-50 border-primary-500 text-primary-700'
-                      : 'bg-white border-gray-300 text-gray-700'
+                      : 'bg-white border-border text-gray-700'
                   }`}
                 >
                   Architect
@@ -88,10 +92,10 @@ export default function Register() {
                 <button
                   type="button"
                   onClick={() => setRole('client')}
-                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border ${
+                  className={`flex-1 py-2 px-3 text-sm font-medium border ${
                     role === 'client'
                       ? 'bg-primary-50 border-primary-500 text-primary-700'
-                      : 'bg-white border-gray-300 text-gray-700'
+                      : 'bg-white border-border text-gray-700'
                   }`}
                 >
                   Client

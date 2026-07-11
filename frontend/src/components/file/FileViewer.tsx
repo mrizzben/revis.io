@@ -102,7 +102,7 @@ export default function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
           <span>{formatBytes(file.file_size)}</span>
         </div>
 
-        <div className="flex items-center justify-center min-h-[300px] max-h-[70vh] overflow-auto bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-center min-h-[300px] max-h-[70vh] overflow-auto bg-gray-50 border border-border">
           {loading && (
             <div className="flex flex-col items-center gap-3">
               <Spinner size="lg" />
@@ -165,7 +165,7 @@ export default function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
                   href={downloadUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 transition-colors"
+                  className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -178,11 +178,11 @@ export default function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
           )}
         </div>
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+        <div className="flex justify-end gap-2 pt-2 border-t border-border">
           <button
             onClick={handleDownload}
             disabled={!downloadUrl}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -192,7 +192,7 @@ export default function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
           </button>
         </div>
 
-        <div className="border-t border-gray-200 pt-3">
+        <div className="border-t border-border pt-3">
           <button
             onClick={() => setShowComments(!showComments)}
             className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 w-full"

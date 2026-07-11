@@ -43,7 +43,6 @@ export default function Header() {
       const data = await listNotifications();
       setNotifications(data);
     } catch {
-      // silently fail
     }
   }, []);
 
@@ -96,39 +95,38 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <header className="bg-white border-b border-border sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link to="/dashboard" className="flex items-center space-x-2">
-            <svg className="w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="flex justify-between items-center h-14">
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <svg className="w-7 h-7 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
-            <span className="text-xl font-bold text-gray-900">Revis.io</span>
+            <span className="text-lg font-bold text-gray-900 tracking-tight">Revis.io</span>
           </Link>
 
           {user && (
-            <div className="flex items-center space-x-1 sm:space-x-3">
-              {/* Notification Bell */}
+            <div className="flex items-center gap-1 sm:gap-3">
               <div className="relative" ref={bellRef}>
                 <button
                   onClick={handleBellClick}
-                  className="relative p-2 text-gray-600 hover:text-gray-900 focus:outline-none rounded-full hover:bg-gray-100"
+                  className="relative p-2 text-gray-500 hover:text-gray-700 focus:outline-none hover:bg-gray-100 transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round"
                       d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                    <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center font-bold">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
 
                 {bellOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-border z-50">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                       <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
                       <button
                         onClick={handleMarkAllRead}
@@ -153,9 +151,9 @@ export default function Header() {
                           <button
                             key={n.id}
                             onClick={() => handleNotificationClick(n)}
-                            className={`w-full text-left p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 ${n.is_read ? 'border-l-4 border-l-transparent' : 'border-l-4 border-l-blue-500'}`}
+                            className={`w-full text-left p-3 hover:bg-gray-50 cursor-pointer border-b border-border last:border-0 ${n.is_read ? 'border-l-2 border-l-transparent' : 'border-l-2 border-l-primary-500'}`}
                           >
-                            <div className="flex items-start space-x-3">
+                            <div className="flex items-start gap-3">
                               <span className="text-lg flex-shrink-0 mt-0.5">{notificationIcon(n.type)}</span>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-medium text-gray-900">{n.title}</p>
@@ -173,26 +171,25 @@ export default function Header() {
                 )}
               </div>
 
-              {/* User Dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsOpen(!isOpen)}
-                  className="flex items-center space-x-2 text-sm text-gray-700 hover:text-gray-900 focus:outline-none"
+                  className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 focus:outline-none"
                 >
-                  <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                    <span className="text-primary-700 font-medium">
+                  <div className="w-7 h-7 bg-primary-100 flex items-center justify-center">
+                    <span className="text-primary-700 text-xs font-medium">
                       {user.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <span className="hidden sm:block">{user.name}</span>
+                  <span className="hidden sm:block text-sm">{user.name}</span>
                 </button>
 
                 {isOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100">
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-border py-1 z-50">
+                    <div className="px-4 py-2 border-b border-border">
                       <p className="text-sm font-medium text-gray-900">{user.name}</p>
                       <p className="text-xs text-gray-500 hidden sm:block">{user.email}</p>
-                      <span className="inline-block mt-1 text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
+                      <span className="inline-block mt-1 text-xs bg-primary-100 text-primary-700 px-2 py-0.5">
                         {user.role}
                       </span>
                     </div>

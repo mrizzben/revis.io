@@ -43,10 +43,10 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', f
       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 ${fullScreenMobile ? 'p-0 sm:p-4' : 'p-4'}`}
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className={`bg-white shadow-xl w-full ${sizeStyles[size]} animate-fade-in ${fullScreenMobile ? 'rounded-none sm:rounded-xl h-full sm:h-auto overflow-auto' : 'rounded-xl'}`}>
+      <div className={`bg-white w-full ${sizeStyles[size]} animate-fade-in ${fullScreenMobile ? 'h-full sm:h-auto overflow-auto' : ''}`}>
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <h2 className="text-base font-semibold text-gray-900">{title}</h2>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 focus:outline-none"
@@ -57,7 +57,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', f
             </button>
           </div>
         )}
-        <div className="px-6 py-4">{children}</div>
+        <div className="px-5 py-4">{children}</div>
       </div>
     </div>
   );

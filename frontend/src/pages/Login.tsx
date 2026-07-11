@@ -17,7 +17,6 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Handle verification/reset tokens from query params
   const verifyToken = searchParams.get('verify');
   const resetToken = searchParams.get('reset');
 
@@ -29,11 +28,10 @@ export default function Login() {
     try {
       const tokens = await authApi.login(email, password);
       storeLogin(tokens.access_token, null);
-      // Use the token directly for this first request
       const user = await apiClient.get('/users/me', {
         headers: { Authorization: `Bearer ${tokens.access_token}` }
       });
-      storeLogin(tokens.access_token, user.data);  // Update with user data
+      storeLogin(tokens.access_token, user.data);
 
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
       navigate(from || '/dashboard', { replace: true });
@@ -57,17 +55,23 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen flex items-center justify-center bg-surface-secondary px-4">
+      <div className="max-w-sm w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Revis.io</h1>
-          <p className="mt-2 text-gray-600">Sign in to your account</p>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <svg className="w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Revis.io</h1>
+          </div>
+          <p className="text-sm text-gray-500">Sign in to your account</p>
         </div>
 
-        <div className="card">
+        <div className="border border-border bg-white p-6">
           {verifyToken && (
-            <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm">
-              Click "Verify Email" below to activate your account, then log in.
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-sm text-blue-700">
+              Click "Verify Email" below to activate your account.
               <button onClick={handleVerifyEmail} className="ml-2 underline font-medium">
                 Verify Email
               </button>
@@ -75,14 +79,14 @@ export default function Login() {
           )}
 
           {resetToken && (
-            <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm">
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-sm text-blue-700">
               Reset token detected. Use the forgot password flow to set a new password.
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{error}</div>
+              <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
             )}
 
             <Input

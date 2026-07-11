@@ -1,5 +1,5 @@
 interface ProgressBarProps {
-  value: number; // 0-100
+  value: number;
   label?: string;
   showPercentage?: boolean;
   size?: 'sm' | 'md';
@@ -25,9 +25,9 @@ export default function ProgressBar({
           {showPercentage && <span className="text-xs text-gray-500">{Math.round(clamped)}%</span>}
         </div>
       )}
-      <div className={`w-full bg-gray-200 rounded-full ${heightStyles[size]}`}>
+      <div className={`w-full bg-gray-200 ${heightStyles[size]}`}>
         <div
-          className={`bg-primary-600 rounded-full transition-all duration-300 ${heightStyles[size]}`}
+          className={`bg-primary-600 transition-all duration-300 ${heightStyles[size]}`}
           style={{ width: `${clamped}%` }}
           role="progressbar"
           aria-valuenow={clamped}
