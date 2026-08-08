@@ -1,15 +1,18 @@
 import asyncio
-from typing import AsyncGenerator
+import os
+from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from src.main import app
 from src.core.database import get_db
 from src.core.security import create_access_token, hash_password
+from src.main import app
 from src.models.base import Base
 from src.models.user import Firm, User
+from src.websocket import get_manager, set_manager
+from src.websocket.manager import ProjectRoomManager
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
@@ -23,6 +26,8 @@ def event_loop():
 
 @pytest.fixture(scope="session")
 async def engine():
+    if os.path.exists("./test.db"):
+        os.remove("./test.db")
     test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -30,6 +35,35 @@ async def engine():
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await test_engine.dispose()
+
+
+class _NoopWsManager(ProjectRoomManager):
+    """Stand-in for ProjectRoomManager so routes don't require a running Redis."""
+
+    async def broadcast_to_project(self, *args, **kwargs):
+        return None
+
+
+@pytest.fixture(autouse=True)
+def _stub_ws_manager():
+    original = get_manager()
+    set_manager(_NoopWsManager())
+    yield
+    set_manager(original)
+
+
+@pytest.fixture(autouse=True)
+async def _clean_tables(engine):
+    """Delete all committed fixture rows after each test.
+
+    The db_session fixture only rolls back uncommitted work, but the data
+    fixtures (test_firm, test_architect, ...) explicitly commit, so rows
+    persist across function-scoped tests and collide on unique columns.
+    """
+    yield
+    async with engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(table.delete())
 
 
 @pytest.fixture
