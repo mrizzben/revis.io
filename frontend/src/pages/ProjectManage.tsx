@@ -2,10 +2,16 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as projectsApi from '../api/endpoints/projects';
-import { listMilestones, createMilestone, updateMilestone, deleteMilestone } from '../api/endpoints/milestones';
+import {
+  listMilestones,
+  createMilestone,
+  updateMilestone,
+  deleteMilestone,
+} from '../api/endpoints/milestones';
 import MilestoneTimeline from '../components/milestone/MilestoneTimeline';
 import MilestoneForm from '../components/milestone/MilestoneForm';
 import KanbanBoard from '../components/project/KanbanBoard';
+import useWebSocket from '../hooks/useWebSocket';
 import Button from '../components/ui/Button';
 import FileUploader from '../components/file/FileUploader';
 import FileList from '../components/file/FileList';
@@ -18,6 +24,7 @@ export default function ProjectManage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const projectIdNum = Number(projectId);
+  useWebSocket(projectIdNum || null);
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', projectIdNum],
@@ -55,7 +62,11 @@ export default function ProjectManage() {
     setEditingMilestone(null);
   };
 
-  const handleMilestoneSubmit = async (data: { name: string; description?: string; position?: number }) => {
+  const handleMilestoneSubmit = async (data: {
+    name: string;
+    description?: string;
+    position?: number;
+  }) => {
     setMilestoneFormLoading(true);
     try {
       if (editingMilestone) {
@@ -148,9 +159,7 @@ export default function ProjectManage() {
             ← Dashboard
           </button>
           <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
-          {project.description && (
-            <p className="text-gray-600 mt-1">{project.description}</p>
-          )}
+          {project.description && <p className="text-gray-600 mt-1">{project.description}</p>}
         </div>
       </div>
 
@@ -198,9 +207,7 @@ export default function ProjectManage() {
               </button>
             </div>
           </div>
-          <Button onClick={handleOpenCreateMilestone}>
-            Add Milestone
-          </Button>
+          <Button onClick={handleOpenCreateMilestone}>Add Milestone</Button>
         </div>
 
         {viewMode === 'timeline' ? (
@@ -237,10 +244,7 @@ export default function ProjectManage() {
         <div className="lg:col-span-2 space-y-6">
           <div className="card">
             <h2 className="text-lg font-semibold mb-4">Upload Design Files</h2>
-            <FileUploader
-              projectId={projectIdNum}
-              onUploadSuccess={handleUploadSuccess}
-            />
+            <FileUploader projectId={projectIdNum} onUploadSuccess={handleUploadSuccess} />
           </div>
 
           <div>

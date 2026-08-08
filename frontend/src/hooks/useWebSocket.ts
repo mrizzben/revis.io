@@ -110,6 +110,7 @@ export default function useWebSocket(projectId: number | null): UseWebSocketRetu
             break;
           case 'file_updated':
             queryClient.invalidateQueries({ queryKey: ['files', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['project', projectId] });
             if (data.file_id) {
               queryClient.invalidateQueries({ queryKey: ['file', data.file_id] });
             }
