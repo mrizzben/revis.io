@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { listMilestones } from '../../api/endpoints/milestones';
 import { getProject } from '../../api/endpoints/projects';
 import { updateFileMilestone } from '../../api/endpoints/files';
 import useAuthStore from '../../stores/authStore';
-import type { DesignFile } from '../../types';
+import type { DesignFile, ProjectDetail } from '../../types';
 import KanbanColumn from './KanbanColumn';
 import FileViewer from '../file/FileViewer';
 
@@ -30,6 +30,32 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   const [error, setError] = useState<string | null>(null);
   const [viewingFile, setViewingFile] = useState<DesignFile | null>(null);
 
+  const mutation = useMutation({
+    mutationFn: ({ fileId, milestoneId }: { fileId: string; milestoneId: number | null }) =>
+      updateFileMilestone(fileId, { milestone_id: milestoneId }),
+    onMutate: async ({ fileId, milestoneId }) => {
+      await queryClient.cancelQueries({ queryKey: ['project', projectId] });
+      const previous = queryClient.getQueryData<ProjectDetail>(['project', projectId]);
+      queryClient.setQueryData<ProjectDetail>(['project', projectId], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          files: old.files.map((f) => (f.id === fileId ? { ...f, milestone_id: milestoneId } : f)),
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) {
+        queryClient.setQueryData(['project', projectId], ctx.previous);
+      }
+      setError('Failed to reassign file. Try again.');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+    },
+  });
+
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => getProject(projectId),
@@ -49,9 +75,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
   const filesByMilestone = useMemo(() => groupFilesByMilestone(files), [files]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -66,15 +90,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     if (targetMilestoneId === currentMilestoneId) return;
 
     setError(null);
-
-    updateFileMilestone(fileData.id, { milestone_id: targetMilestoneId })
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      })
-      .catch(() => {
-        setError('Failed to reassign file. Try again.');
-        queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      });
+    mutation.mutate({ fileId: fileData.id, milestoneId: targetMilestoneId });
   }
 
   async function handleFileClick(file: DesignFile) {
@@ -84,8 +100,18 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   if (milestones.length === 0) {
     return (
       <div className="border border-border bg-white py-12 px-6 text-center">
-        <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        <svg
+          className="w-10 h-10 text-gray-300 mx-auto mb-3"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+          />
         </svg>
         <p className="text-sm text-gray-500 max-w-xs mx-auto">
           Create milestones to use the board view
@@ -131,11 +157,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
       </DndContext>
 
       {viewingFile && (
-        <FileViewer
-          file={viewingFile!}
-          isOpen={true}
-          onClose={() => setViewingFile(null)}
-        />
+        <FileViewer file={viewingFile!} isOpen={true} onClose={() => setViewingFile(null)} />
       )}
     </div>
   );

@@ -35,43 +35,24 @@ export default function KanbanCard({ file, disabled = false, onClick }: KanbanCa
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }
     : undefined;
 
-  if (disabled) {
-    return (
-      <div
-        className="border border-border bg-white hover:bg-gray-50 transition-colors cursor-pointer group"
-        onClick={onClick}
-      >
-        <div className="aspect-[4/3] bg-gray-100 relative border-b border-border">
-          <FileThumbnail file={file} size="small" />
-        </div>
-        <div className="p-2.5">
-          <p className="text-sm font-medium text-gray-900 truncate" title={file.filename}>{file.filename}</p>
-          <div className="flex items-center justify-between mt-1">
-            <Badge className={FILE_TYPE_COLORS[file.file_type] || 'bg-gray-100 text-gray-700'}>
-              {file.file_type.toUpperCase()}
-            </Badge>
-            <span className="text-xs text-gray-400">v{file.version_number}</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={`border border-border bg-white hover:bg-gray-50 transition-colors cursor-grab active:cursor-grabbing group ${
-        isDragging ? 'ring-2 ring-primary-500 bg-primary-50' : ''
-      }`}
+      ref={disabled ? undefined : setNodeRef}
+      {...(disabled ? {} : listeners)}
+      {...(disabled ? {} : attributes)}
+      onClick={onClick}
+      className={`border border-border bg-white hover:bg-gray-50 transition-colors cursor-pointer group ${
+        disabled ? '' : 'cursor-grab active:cursor-grabbing'
+      } ${isDragging && !disabled ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
       style={style}
     >
       <div className="aspect-[4/3] bg-gray-100 relative border-b border-border">
         <FileThumbnail file={file} size="small" />
       </div>
       <div className="p-2.5">
-        <p className="text-sm font-medium text-gray-900 truncate" title={file.filename}>{file.filename}</p>
+        <p className="text-sm font-medium text-gray-900 truncate" title={file.filename}>
+          {file.filename}
+        </p>
         <div className="flex items-center justify-between mt-1">
           <Badge className={FILE_TYPE_COLORS[file.file_type] || 'bg-gray-100 text-gray-700'}>
             {file.file_type.toUpperCase()}
