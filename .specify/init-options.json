@@ -1,9 +1,9 @@
 {
-  "ai": "opencode",
+  "ai": "pi",
   "branch_numbering": "sequential",
   "context_file": "AGENTS.md",
   "here": true,
-  "integration": "opencode",
+  "integration": "pi",
   "script": "sh",
   "speckit_version": "0.8.8.dev0"
 }

@@ -77,7 +77,7 @@
 
 ### Implementation for User Story 3
 
-- [x] T011 [US3] Pass user role from auth store to KanbanBoard; disable drag on cards when role is 'client' (render plain div instead of @dnd-kit sortable) in frontend/src/components/project/KanbanBoard.tsx and frontend/src/project/KanbanCard.tsx
+- [x] T011 [US3] Pass user role from auth store to KanbanBoard; disable drag on cards when role is 'client' (render plain div instead of @dnd-kit sortable) in frontend/src/components/project/KanbanBoard.tsx and frontend/src/components/project/KanbanCard.tsx
 - [x] T012 [US3] Wire card click to file viewer navigation (reuse existing file preview behavior from timeline view) in frontend/src/components/project/KanbanCard.tsx
 
 **Checkpoint**: Clients see the board in read-only mode. Drag is disabled. Click opens file preview.
