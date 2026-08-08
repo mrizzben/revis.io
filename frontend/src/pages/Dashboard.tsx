@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useAuthStore from '../stores/authStore';
 import useWebSocket from '../hooks/useWebSocket';
@@ -8,7 +8,6 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
 import Skeleton from '../components/ui/Skeleton';
-import Badge from '../components/ui/Badge';
 import ProjectCard from '../components/project/ProjectCard';
 import type { CreateProjectRequest } from '../types';
 
@@ -57,14 +56,14 @@ export default function Dashboard() {
             <Skeleton height="28px" width="200px" className="mb-2" />
             <Skeleton height="16px" width="160px" />
           </div>
-          <Skeleton height="40px" width="120px" className="rounded-lg" />
+          <Skeleton height="40px" width="120px" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-          <Skeleton height="80px" className="rounded-xl" count={3} />
+          <Skeleton height="80px" count={3} />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="card p-0 overflow-hidden">
+            <div key={i} className="border border-border bg-white">
               <Skeleton height="120px" />
               <div className="p-4 space-y-3">
                 <Skeleton height="20px" width="60%" />
@@ -82,21 +81,21 @@ export default function Dashboard() {
   }
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-8">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
               Welcome, {user?.name}
             </h1>
             {isConnected && (
               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-600">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="w-1.5 h-1.5 bg-green-500" />
                 Live
               </span>
             )}
           </div>
-          <p className="text-gray-600 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             {user?.role === 'architect' ? 'Manage your design projects' : 'View your design projects'}
           </p>
         </div>
@@ -105,23 +104,21 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-        <div className="card">
-          <p className="text-sm text-gray-500">Total Projects</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+        <div className="border border-border bg-white p-5">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Projects</p>
+          <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
         </div>
-        <div className="card">
-          <p className="text-sm text-gray-500">Active</p>
-          <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+        <div className="border border-border bg-white p-5">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Active</p>
+          <p className="text-3xl font-bold text-green-600 mt-1">{stats.active}</p>
         </div>
-        <div className="card">
-          <p className="text-sm text-gray-500">Design Files</p>
-          <p className="text-2xl font-bold text-primary-600">{stats.totalFiles}</p>
+        <div className="border border-border bg-white p-5">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Design Files</p>
+          <p className="text-3xl font-bold text-primary-600 mt-1">{stats.totalFiles}</p>
         </div>
       </div>
 
-      {/* Project List */}
       {projects && projects.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (
@@ -129,8 +126,8 @@ export default function Dashboard() {
           ))}
         </div>
       ) : (
-        <div className="card text-center py-12">
-          <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="border border-border bg-white py-12 px-6 text-center">
+          <svg className="w-10 h-10 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
               d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
@@ -146,7 +143,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Create Project Modal */}
       <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="New Project">
         <form onSubmit={handleCreateProject} className="space-y-4">
           <Input

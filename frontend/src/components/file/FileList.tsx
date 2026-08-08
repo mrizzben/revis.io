@@ -1,10 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as filesApi from '../../api/endpoints/files';
-import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-import Spinner from '../ui/Spinner';
-import Modal from '../ui/Modal';
 import FileThumbnail from './FileThumbnail';
 import FileViewer from './FileViewer';
 import type { DesignFile } from '../../types';
@@ -49,7 +46,6 @@ export default function FileList({
 }: FileListProps) {
   const queryClient = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<DesignFile | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
   const milestoneMap = useMemo(() => {
     if (!milestones) return new Map<number, string>();
@@ -90,19 +86,11 @@ export default function FileList({
 
   const handleViewFile = async (file: DesignFile) => {
     setSelectedFile(file);
-    if (['png', 'jpg', 'jpeg', 'webp', 'pdf'].includes(file.file_type)) {
-      try {
-        const { url } = await filesApi.getDownloadUrl(file.id);
-        setDownloadUrl(url);
-      } catch {
-        setDownloadUrl(null);
-      }
-    }
   };
 
   if (!files || files.length === 0) {
     return (
-      <div className="card text-center py-8">
+      <div className="border border-border bg-white py-8 text-center">
         <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
             d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
@@ -113,46 +101,13 @@ export default function FileList({
     );
   }
 
-  if (filteredFiles.length === 0) {
-    return (
-      <>
-        {milestones && milestones.length > 0 && (
-          <div className="flex items-center mb-4 space-x-2">
-            <label className="text-sm text-gray-600 font-medium">Filter by milestone:</label>
-            <select
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-400"
-              value={selectedMilestoneId ?? ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                onMilestoneFilterChange?.(val ? Number(val) : null);
-              }}
-            >
-              <option value="">All Files</option>
-              {milestones.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        <div className="card text-center py-8">
-          <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-          </svg>
-          <p className="text-gray-500 text-sm">No files in this category</p>
-          <p className="text-gray-400 text-xs mt-1">Try selecting a different milestone filter</p>
-        </div>
-      </>
-    );
-  }
-
   const renderFileCard = (file: DesignFile) => (
     <div
       key={file.id}
-      className="card p-0 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
+      className="border border-border bg-white hover:border-primary-300 transition-colors cursor-pointer group"
       onClick={() => handleViewFile(file)}
     >
-      <div className="aspect-square bg-gray-100 relative">
+      <div className="aspect-square bg-gray-100 relative border-b border-border">
         <FileThumbnail file={file} size="medium" />
       </div>
       <div className="p-3">
@@ -205,10 +160,10 @@ export default function FileList({
   return (
     <>
       {milestones && milestones.length > 0 && (
-        <div className="flex items-center mb-4 space-x-2">
-          <label className="text-sm text-gray-600 font-medium">Filter by milestone:</label>
+        <div className="flex items-center mb-4 gap-2">
+          <label className="text-sm text-gray-600 font-medium">Filter:</label>
           <select
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-400"
+            className="border border-border px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-primary-500"
             value={selectedMilestoneId ?? ''}
             onChange={(e) => {
               const val = e.target.value;
@@ -226,7 +181,7 @@ export default function FileList({
       {groupedFiles ? (
         groupedFiles.map(([milestoneId, groupFiles]) => (
           <div key={milestoneId ?? 'uncategorized'} className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
               {milestoneId != null && milestoneMap.has(milestoneId)
                 ? milestoneMap.get(milestoneId)
                 : 'Uncategorized'}
@@ -242,16 +197,13 @@ export default function FileList({
         </div>
       )}
 
-      <Modal
-        isOpen={!!selectedFile}
-        onClose={() => { setSelectedFile(null); setDownloadUrl(null); }}
-        title={selectedFile?.filename}
-        size="lg"
-      >
-        {selectedFile && (
-          <FileViewer file={selectedFile} downloadUrl={downloadUrl} />
-        )}
-      </Modal>
+      {selectedFile && (
+        <FileViewer
+          file={selectedFile}
+          isOpen={true}
+          onClose={() => setSelectedFile(null)}
+        />
+      )}
     </>
   );
 }

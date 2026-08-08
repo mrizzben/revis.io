@@ -20,7 +20,7 @@ export default function Skeleton({
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className={`animate-pulse bg-gray-200 rounded ${className}`}
+          className={`animate-pulse bg-gray-200 ${className}`}
           style={style}
         />
       ))}

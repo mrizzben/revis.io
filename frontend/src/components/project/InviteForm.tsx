@@ -3,7 +3,6 @@ import { useMutation } from '@tanstack/react-query';
 import * as projectsApi from '../../api/endpoints/projects';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
-import Badge from '../ui/Badge';
 
 interface InviteFormProps {
   projectId: number;
@@ -29,10 +28,10 @@ export default function InviteForm({ projectId }: InviteFormProps) {
   };
 
   return (
-    <div className="card">
-      <h2 className="text-lg font-semibold mb-4">Invite Client</h2>
+    <div className="border border-border bg-white p-5">
+      <h2 className="text-base font-semibold mb-3">Invite Client</h2>
       <p className="text-sm text-gray-500 mb-4">
-        Send an invitation email to a client. They'll create an account and get access to this project.
+        Send an invitation email to a client.
       </p>
       <form onSubmit={handleSubmit} className="space-y-3">
         <Input

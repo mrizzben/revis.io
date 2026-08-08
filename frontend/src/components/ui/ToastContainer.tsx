@@ -27,7 +27,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
 
   return (
     <div
-      className={`flex items-center justify-between px-4 py-3 rounded-lg border shadow-sm animate-slide-up ${typeStyles[toast.type]}`}
+      className={`flex items-center justify-between px-4 py-3 border animate-fade-in ${typeStyles[toast.type]}`}
     >
       <span className="text-sm">{toast.message}</span>
       <button

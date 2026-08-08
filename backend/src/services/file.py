@@ -2,8 +2,6 @@
 
 import logging
 import uuid
-from datetime import timedelta
-from typing import BinaryIO
 
 import boto3
 from botocore.client import Config
@@ -16,9 +14,18 @@ logger = logging.getLogger(__name__)
 
 # Allowed file types and corresponding MIME types
 ALLOWED_EXTENSIONS: set[str] = {
-    "png", "jpg", "jpeg", "webp", "pdf",
-    "dwg", "dxf", "skp", "rvt",
-    "ifc", "obj", "stl",
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "pdf",
+    "dwg",
+    "dxf",
+    "skp",
+    "rvt",
+    "ifc",
+    "obj",
+    "stl",
 }
 MAX_FILE_SIZE = 1_073_741_824  # 1 GiB
 MULTIPART_THRESHOLD = 100 * 1024 * 1024  # 100 MB
@@ -26,7 +33,7 @@ MULTIPART_THRESHOLD = 100 * 1024 * 1024  # 100 MB
 
 def _get_s3_client(use_presigned_endpoint: bool = False):
     """Create a configured S3 client (or MinIO-compatible client).
-    
+
     Args:
         use_presigned_endpoint: If True, use S3_PRESIGNED_ENDPOINT for generating
                                presigned URLs that browsers can use. Falls back
@@ -56,21 +63,27 @@ def _get_lazy_s3_client():
     """Return the S3 client for internal operations, creating it on first use (lazy initialization)."""
     global _s3_client
     if _s3_client is None:
-        logger.info("Initializing S3 client for internal operations", extra={"endpoint": settings.S3_ENDPOINT, "bucket": settings.S3_BUCKET})
+        logger.info(
+            "Initializing S3 client for internal operations",
+            extra={"endpoint": settings.S3_ENDPOINT, "bucket": settings.S3_BUCKET},
+        )
         _s3_client = _get_s3_client(use_presigned_endpoint=False)
     return _s3_client
 
 
 def _get_lazy_presigned_s3_client():
     """Return the S3 client for generating presigned URLs, creating it on first use.
-    
+
     This client uses S3_PRESIGNED_ENDPOINT (external/browser-facing) if set,
     otherwise falls back to S3_ENDPOINT.
     """
     global _s3_presigned_client
     if _s3_presigned_client is None:
         presigned_endpoint = settings.S3_PRESIGNED_ENDPOINT or settings.S3_ENDPOINT
-        logger.info("Initializing S3 client for presigned URLs", extra={"endpoint": presigned_endpoint, "bucket": settings.S3_BUCKET})
+        logger.info(
+            "Initializing S3 client for presigned URLs",
+            extra={"endpoint": presigned_endpoint, "bucket": settings.S3_BUCKET},
+        )
         _s3_presigned_client = _get_s3_client(use_presigned_endpoint=True)
     return _s3_presigned_client
 
@@ -148,7 +161,7 @@ def create_presigned_upload_url(
     expires_in: int = 3600,
 ) -> str:
     """Generate a presigned URL for a single PUT upload (≤100MB).
-    
+
     Uses the presigned S3 client which connects to the external/browser-facing endpoint.
     """
     s3 = _get_lazy_presigned_s3_client()
@@ -166,7 +179,11 @@ def create_presigned_upload_url(
     except Exception as e:
         logger.error(
             "Failed to generate presigned upload URL",
-            extra={"key": key, "error": str(e), "endpoint": settings.S3_PRESIGNED_ENDPOINT or settings.S3_ENDPOINT},
+            extra={
+                "key": key,
+                "error": str(e),
+                "endpoint": settings.S3_PRESIGNED_ENDPOINT or settings.S3_ENDPOINT,
+            },
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -181,7 +198,7 @@ def create_presigned_download_url(
     expires_in: int = 3600,
 ) -> str:
     """Generate a presigned URL for downloading a file.
-    
+
     Uses the presigned S3 client which connects to the external/browser-facing endpoint.
     """
     s3 = _get_lazy_presigned_s3_client()
@@ -191,9 +208,7 @@ def create_presigned_download_url(
             "Key": key,
         }
         if filename:
-            params["ResponseContentDisposition"] = (
-                f'attachment; filename="{filename}"'
-            )
+            params["ResponseContentDisposition"] = f'attachment; filename="{filename}"'
         if content_type:
             params["ResponseContentType"] = content_type
         url = s3.generate_presigned_url(
@@ -205,7 +220,11 @@ def create_presigned_download_url(
     except Exception as e:
         logger.error(
             "Failed to generate presigned download URL",
-            extra={"key": key, "error": str(e), "endpoint": settings.S3_PRESIGNED_ENDPOINT or settings.S3_ENDPOINT},
+            extra={
+                "key": key,
+                "error": str(e),
+                "endpoint": settings.S3_PRESIGNED_ENDPOINT or settings.S3_ENDPOINT,
+            },
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -261,7 +280,12 @@ def create_multipart_part_urls(
     except Exception as e:
         logger.error(
             "Failed to generate multipart presigned URLs",
-            extra={"key": key, "upload_id": upload_id, "error": str(e), "endpoint": settings.S3_ENDPOINT},
+            extra={
+                "key": key,
+                "upload_id": upload_id,
+                "error": str(e),
+                "endpoint": settings.S3_ENDPOINT,
+            },
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -286,7 +310,12 @@ def complete_multipart_upload(
     except Exception as e:
         logger.error(
             "Failed to complete multipart upload",
-            extra={"key": key, "upload_id": upload_id, "error": str(e), "endpoint": settings.S3_ENDPOINT},
+            extra={
+                "key": key,
+                "upload_id": upload_id,
+                "error": str(e),
+                "endpoint": settings.S3_ENDPOINT,
+            },
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -306,7 +335,12 @@ def abort_multipart_upload(key: str, upload_id: str) -> None:
     except Exception as e:
         logger.error(
             "Failed to abort multipart upload",
-            extra={"key": key, "upload_id": upload_id, "error": str(e), "endpoint": settings.S3_ENDPOINT},
+            extra={
+                "key": key,
+                "upload_id": upload_id,
+                "error": str(e),
+                "endpoint": settings.S3_ENDPOINT,
+            },
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -316,7 +350,7 @@ def abort_multipart_upload(key: str, upload_id: str) -> None:
 
 def get_thumbnail_presigned_url(key: str | None, expires_in: int = 300) -> str | None:
     """Get a presigned URL for a thumbnail. Returns None if no thumbnail available.
-    
+
     Uses the presigned S3 client which connects to the external/browser-facing endpoint.
     """
     if not key:
@@ -335,7 +369,11 @@ def get_thumbnail_presigned_url(key: str | None, expires_in: int = 300) -> str |
     except Exception as e:
         logger.error(
             "Failed to generate thumbnail presigned URL",
-            extra={"key": key, "error": str(e), "endpoint": settings.S3_PRESIGNED_ENDPOINT or settings.S3_ENDPOINT},
+            extra={
+                "key": key,
+                "error": str(e),
+                "endpoint": settings.S3_PRESIGNED_ENDPOINT or settings.S3_ENDPOINT,
+            },
         )
         # Don't raise - return None so caller can handle gracefully
         return None
@@ -364,10 +402,9 @@ def delete_s3_object(key: str) -> None:
 # Database Operations (T028)
 # ═══════════════════════════════════════════════════════════
 
-import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.file import DesignFile, FileVersion, ThumbnailStatus
@@ -402,7 +439,12 @@ async def create_file_record(
     await db.refresh(file)
     logger.info(
         "File upload initiated",
-        extra={"file_id": str(file.id), "project_id": project_id, "file_name": filename, "size": file_size},
+        extra={
+            "file_id": str(file.id),
+            "project_id": project_id,
+            "file_name": filename,
+            "size": file_size,
+        },
     )
     return file
 
@@ -417,7 +459,7 @@ async def get_file(
     result = await db.execute(
         select(DesignFile)
         .options(selectinload(DesignFile.uploaded_by))
-        .where(DesignFile.id == file_id, DesignFile.is_deleted.is_(False))
+        .where(DesignFile.id == uuid.UUID(file_id), DesignFile.is_deleted.is_(False))
     )
     file = result.scalar_one_or_none()
     if not file:
@@ -456,7 +498,7 @@ async def soft_delete_file(
     """Soft-delete a design file."""
     file = await get_file(db, file_id)
     file.is_deleted = True
-    file.updated_at = datetime.now(timezone.utc)
+    file.updated_at = datetime.now(UTC)
     await db.commit()
     logger.info(
         "File soft-deleted",
@@ -473,7 +515,7 @@ async def complete_file_upload(
     # The thumbnail_status is already 'pending', the ARQ worker will pick it up.
     # We could enqueue the ARQ job here but that requires redis connection.
     # For now, the frontend calls upload-complete to trigger processing.
-    file.updated_at = datetime.now(timezone.utc)
+    file.updated_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(file)
     logger.info(
@@ -493,9 +535,7 @@ async def create_file_version(
     """Create a new version record for a file."""
     # Get current version count
     result = await db.execute(
-        select(func.max(FileVersion.version_number)).where(
-            FileVersion.file_id == file_id
-        )
+        select(func.max(FileVersion.version_number)).where(FileVersion.file_id == file_id)
     )
     max_version = result.scalar() or 0
 

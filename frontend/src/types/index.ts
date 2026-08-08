@@ -174,6 +174,10 @@ export interface ThumbnailParams {
   size?: 'small' | 'medium';
 }
 
+export interface UpdateFileMilestoneRequest {
+  milestone_id: number | null;
+}
+
 // ── Milestone ─────────────────────────────────────────────
 export interface Milestone {
   id: number;

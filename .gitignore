@@ -50,3 +50,24 @@ htmlcov/
 
 # MinIO data (dev)
 data/
+
+# Agent tooling configs / skills (local, not part of the app)
+.agent/
+.claude/
+.codebuddy/
+.codex/
+.continue/
+.cursor/
+.gemini/
+.kiro/
+.opencode/
+.pi/
+.qoder/
+.roo/
+.trae/
+.windsurf/
+.github/prompts/
+.specify/integrations/
+
+# Local test DB
+backend/test.db
