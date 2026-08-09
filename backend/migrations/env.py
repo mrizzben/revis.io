@@ -9,10 +9,19 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from src.core.config import settings
-from src.models.base import Base
 
 # Import all models to register them with Base.metadata
-from src.models import user, project, file, milestone, comment, notification  # noqa: F401
+from src.models import (  # noqa: F401
+    comment,
+    file,
+    internal_note,
+    milestone,
+    notification,
+    project,
+    todo,
+    user,
+)
+from src.models.base import Base
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
