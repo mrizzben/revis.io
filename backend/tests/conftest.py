@@ -43,6 +43,9 @@ class _NoopWsManager(ProjectRoomManager):
     async def broadcast_to_project(self, *args, **kwargs):
         return None
 
+    async def broadcast_to_project_team(self, *args, **kwargs):
+        return None
+
 
 @pytest.fixture(autouse=True)
 def _stub_ws_manager():
