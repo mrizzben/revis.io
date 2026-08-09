@@ -4,10 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { getProject } from '../api/endpoints/projects';
 import { listProjectFiles } from '../api/endpoints/files';
 import { listMilestones } from '../api/endpoints/milestones';
+import { listCollaborators } from '../api/endpoints/collaborators';
 import useWebSocket from '../hooks/useWebSocket';
+import useAuthStore from '../stores/authStore';
 import FileList from '../components/file/FileList';
 import MilestoneTimeline from '../components/milestone/MilestoneTimeline';
 import KanbanBoard from '../components/project/KanbanBoard';
+import InternalPanel from '../components/collaboration/InternalPanel';
 import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
 
@@ -38,6 +41,18 @@ export default function ProjectView() {
     queryFn: () => listMilestones(projectIdNum),
     enabled: !!projectIdNum,
   });
+
+  // Internal team probe: owner + collaborators get 200; clients get 404 (never rendered)
+  const { data: collabData } = useQuery({
+    queryKey: ['collaborators', projectIdNum],
+    queryFn: () => listCollaborators(projectIdNum),
+    enabled: !!projectIdNum,
+    retry: false,
+  });
+  const currentUser = useAuthStore((s) => s.user);
+  const isInternal = !!collabData;
+  const currentUserIsOwner = !!currentUser && project?.owner_id === currentUser.id;
+  const collaborators = collabData?.collaborators ?? [];
 
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'timeline' | 'board'>('timeline');
@@ -240,6 +255,16 @@ export default function ProjectView() {
           </div>
         </div>
       </div>
+
+      {/* Internal team workspace — rendered only for owner/collaborators */}
+      {isInternal && currentUser && (
+        <InternalPanel
+          projectId={projectIdNum}
+          currentUserId={currentUser.id}
+          currentUserIsOwner={currentUserIsOwner}
+          collaborators={collaborators}
+        />
+      )}
     </div>
   );
 }

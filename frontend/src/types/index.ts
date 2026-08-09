@@ -227,6 +227,61 @@ export interface UpdateCommentRequest {
   is_resolved?: boolean;
 }
 
+// ── Internal Collaboration ────────────────────────────────
+export interface CollaboratorBrief {
+  user_id: number;
+  email: string;
+  name: string;
+}
+
+export interface CollaboratorMember extends CollaboratorBrief {
+  role: string;
+  joined_at: string;
+}
+
+export interface CollaboratorsResponse {
+  collaborators: CollaboratorMember[];
+  owner: CollaboratorBrief | null;
+}
+
+export interface Mention {
+  user_id: number;
+  name: string;
+}
+
+export interface InternalNoteReply {
+  id: number;
+  author: { id: number; name: string } | null;
+  body: string;
+  parent_id: number;
+  created_at: string;
+}
+
+export interface InternalNote {
+  id: number;
+  author: { id: number; name: string } | null;
+  body: string;
+  mentions: Mention[];
+  replies: InternalNoteReply[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InternalNotesResponse {
+  notes: InternalNote[];
+}
+
+export interface ToDo {
+  id: number;
+  title: string;
+  description: string | null;
+  status: 'open' | 'complete';
+  assignee: { id: number; name: string } | null;
+  created_by: { id: number; name: string } | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Project Updates (polling) ─────────────────────────────
 export interface ProjectUpdatesResponse {
   has_updates: boolean;
@@ -240,6 +295,10 @@ export type WsEventType =
   | 'file_updated'
   | 'milestone_updated'
   | 'comment_added'
+  | 'internal_note_added'
+  | 'todo_added'
+  | 'todo_updated'
+  | 'todo_deleted'
   | 'ping'
   | 'pong';
 
@@ -250,6 +309,9 @@ export interface WsEvent {
   milestone_id?: number;
   is_completed?: boolean;
   comment_id?: number;
+  note_id?: number;
+  parent_id?: number;
+  todo_id?: number;
 }
 
 // ── Notification ──────────────────────────────────────────
@@ -257,7 +319,9 @@ export type NotificationType =
   | 'file_uploaded'
   | 'milestone_completed'
   | 'comment_replied'
-  | 'invitation_received';
+  | 'invitation_received'
+  | 'mention'
+  | 'todo_assigned';
 
 export interface Notification {
   id: number;
@@ -272,9 +336,11 @@ export interface Notification {
 
 // ── API Error ─────────────────────────────────────────────
 export interface ApiError {
-  detail: string | Array<{
-    loc: (string | number)[];
-    msg: string;
-    type: string;
-  }>;
+  detail:
+    | string
+    | Array<{
+        loc: (string | number)[];
+        msg: string;
+        type: string;
+      }>;
 }
