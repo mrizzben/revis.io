@@ -2,7 +2,20 @@
 
 from fastapi import APIRouter
 
-from src.api.routes import auth, comments, firms, files, invitations, milestones, notifications, projects, users
+from src.api.routes import (
+    auth,
+    collaborators,
+    comments,
+    files,
+    firms,
+    internal_notes,
+    invitations,
+    milestones,
+    notifications,
+    projects,
+    todos,
+    users,
+)
 
 api_router = APIRouter(prefix="/api")
 
@@ -15,3 +28,6 @@ api_router.include_router(files.router, tags=["Files"])
 api_router.include_router(milestones.router, tags=["Milestones"])
 api_router.include_router(notifications.router, tags=["Notifications"])
 api_router.include_router(comments.router, tags=["Comments"])
+api_router.include_router(collaborators.router, tags=["Collaborators"])
+api_router.include_router(internal_notes.router, tags=["Internal Notes"])
+api_router.include_router(todos.router, tags=["To-Dos"])
