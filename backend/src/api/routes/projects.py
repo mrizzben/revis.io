@@ -1,14 +1,21 @@
-"""Project routes: CRUD, invitations, and polling fallback."""
+"""Project routes: CRUD, invitations, files listing, and polling fallback."""
+
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from src.api.dependencies import DBSession, get_current_user, require_role
-from src.models.user import User
+from src.models.file import DesignFile
+from src.models.milestone import Milestone
+from src.models.user import User, UserRole
 from src.schemas.project import (
     InviteClientRequest,
     ProjectCreate,
     ProjectUpdate,
 )
+from src.services import file as file_service
 from src.services import project as project_service
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -41,6 +48,46 @@ async def create_project(
     return project
 
 
+@router.get("/{project_id}/files")
+async def list_project_files(
+    project_id: int,
+    db: DBSession,
+    current_user: User = Depends(get_current_user),
+    milestone_id: int | None = Query(None),
+):
+    """List project design items with revision visibility applied per role (T7).
+
+    Clients only ever receive items that have an issued revision.
+    """
+    await project_service._get_project_with_access(db, project_id, current_user)
+
+    query = (
+        select(DesignFile)
+        .options(selectinload(DesignFile.uploaded_by), selectinload(DesignFile.design_option))
+        .where(DesignFile.project_id == project_id, DesignFile.is_deleted.is_(False))
+    )
+    if milestone_id is not None:
+        query = query.where(DesignFile.milestone_id == milestone_id)
+    result = await db.execute(query)
+    files = list(result.scalars().all())
+
+    if current_user.role == UserRole.client:
+        visible = []
+        for f in files:
+            versions = await file_service.list_client_versions(db, str(f.id))
+            if versions:
+                visible.append(f)
+        return [
+            await file_service.build_file_payload(db, f, current_user)
+            for f in visible
+        ]
+
+    return [
+        await file_service.build_file_payload(db, f, current_user)
+        for f in files
+    ]
+
+
 @router.get("/{project_id}")
 async def get_project(
     project_id: int,
@@ -51,10 +98,10 @@ async def get_project(
     project = await project_service.get_project(db, project_id, current_user)
 
     # Load related data
-    from src.models.file import DesignFile
-    from src.models.milestone import Milestone
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
+
+    from src.models.file import DesignFile
 
     # Get milestones
     milestone_result = await db.execute(
@@ -64,17 +111,32 @@ async def get_project(
     )
     milestones = milestone_result.scalars().all()
 
-    # Get files
+    # Get files (role-aware payloads; clients see only issued items)
     file_result = await db.execute(
         select(DesignFile)
-        .options(selectinload(DesignFile.uploaded_by))
+        .options(selectinload(DesignFile.uploaded_by), selectinload(DesignFile.design_option))
         .where(DesignFile.project_id == project_id, DesignFile.is_deleted.is_(False))
         .order_by(DesignFile.created_at.desc())
     )
     files = file_result.scalars().all()
 
+    if current_user.role == UserRole.client:
+        visible_files = []
+        for f in files:
+            versions = await file_service.list_client_versions(db, str(f.id))
+            if versions:
+                visible_files.append(f)
+        file_payloads = [
+            await file_service.build_file_payload(db, f, current_user)
+            for f in visible_files
+        ]
+    else:
+        file_payloads = [
+            await file_service.build_file_payload(db, f, current_user)
+            for f in files
+        ]
+
     # Counts
-    from src.models.file import ThumbnailStatus
     from sqlalchemy import func
 
     file_count = await db.execute(
@@ -102,7 +164,7 @@ async def get_project(
         "owner_id": project.owner_id,
         "firm_id": project.firm_id,
         "is_archived": project.is_archived,
-        "file_count": file_count.scalar() or 0,
+        "file_count": len(file_payloads),
         "milestone_count": milestone_count_result.scalar() or 0,
         "completed_milestone_count": completed_count.scalar() or 0,
         "created_at": project.created_at,
@@ -121,35 +183,7 @@ async def get_project(
             }
             for m in milestones
         ],
-        "files": [
-            {
-                "id": str(f.id),
-                "project_id": f.project_id,
-                "milestone_id": f.milestone_id,
-                "filename": f.filename,
-                "file_type": f.file_type,
-                "content_type": f.content_type,
-                "file_size": f.file_size,
-                "thumbnail_status": f.thumbnail_status.value,
-                "preview_status": f.preview_status,
-                "is_deleted": f.is_deleted,
-                "version_number": 1,
-                "comment_count": 0,
-                "uploaded_by": {
-                    "id": f.uploaded_by.id,
-                    "email": f.uploaded_by.email,
-                    "name": f.uploaded_by.name,
-                    "role": f.uploaded_by.role.value,
-                    "firm_id": f.uploaded_by.firm_id,
-                    "is_firm_admin": f.uploaded_by.is_firm_admin,
-                    "is_verified": f.uploaded_by.is_verified,
-                    "created_at": f.uploaded_by.created_at.isoformat() if f.uploaded_by.created_at else None,
-                } if f.uploaded_by else None,
-                "created_at": f.created_at,
-                "updated_at": f.updated_at,
-            }
-            for f in files
-        ],
+        "files": file_payloads,
     }
 
 
@@ -185,6 +219,19 @@ async def delete_project(
         user=current_user,
         archive_only=archive_only,
     )
+    if archive_only:
+        from src.services import activity
+
+        await activity.record_event(
+            db,
+            project_id=project_id,
+            actor_id=current_user.id,
+            event_type="project_archived",
+            entity_type="project",
+            entity_id=project_id,
+            payload={},
+            visibility="client",
+        )
 
 
 # ── Invitations ───────────────────────────────────────────
@@ -202,6 +249,18 @@ async def invite_client(
         project_id=project_id,
         email=request.email,
         invited_by=current_user,
+    )
+    from src.services import activity
+
+    await activity.record_event(
+        db,
+        project_id=project_id,
+        actor_id=current_user.id,
+        event_type="client_invited",
+        entity_type="invitation",
+        entity_id=invitation.id,
+        payload={"email": request.email},
+        visibility="client",
     )
     return {
         "id": invitation.id,
@@ -221,10 +280,11 @@ async def check_updates(
     since: str = Query(None, description="ISO 8601 timestamp"),
 ):
     """Polling fallback for WebSocket: check if project has updates since timestamp."""
-    from datetime import datetime, timezone
-    from sqlalchemy import select, func
+    from datetime import datetime
+
+    from sqlalchemy import func, select
+
     from src.models.file import DesignFile
-    from src.models.milestone import Milestone
 
     # Verify access
     await project_service._get_project_with_access(db, project_id, current_user)
@@ -258,5 +318,5 @@ async def check_updates(
 
     return {
         "has_updates": has_updates,
-        "timestamp": newest.isoformat() if newest else datetime.now(timezone.utc).isoformat(),
+        "timestamp": newest.isoformat() if newest else datetime.now(UTC).isoformat(),
     }

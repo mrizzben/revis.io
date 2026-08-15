@@ -108,6 +108,23 @@ export default function useWebSocket(projectId: number | null): UseWebSocketRetu
           case 'file_deleted':
             queryClient.invalidateQueries({ queryKey: ['files', projectId] });
             break;
+          case 'revision_created':
+          case 'revision_restored':
+          case 'revision_issued':
+            queryClient.invalidateQueries({ queryKey: ['files', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['activity', projectId] });
+            if (data.file_id) {
+              queryClient.invalidateQueries({ queryKey: ['versions', data.file_id] });
+            }
+            break;
+          case 'review_requested':
+          case 'review_updated':
+            queryClient.invalidateQueries({ queryKey: ['activity', projectId] });
+            if (data.file_id) {
+              queryClient.invalidateQueries({ queryKey: ['reviews', data.file_id] });
+            }
+            break;
           case 'file_updated':
             queryClient.invalidateQueries({ queryKey: ['files', projectId] });
             queryClient.invalidateQueries({ queryKey: ['project', projectId] });

@@ -11,12 +11,18 @@ interface Milestone {
   name: string;
 }
 
+interface CollaboratorBrief {
+  id: number;
+  name: string;
+}
+
 interface FileListProps {
   files?: DesignFile[];
   projectId: number;
   onFileDeleted?: () => void;
   milestoneId?: number;
   milestones?: Milestone[];
+  collaborators?: CollaboratorBrief[];
   selectedMilestoneId?: number | null;
   onMilestoneFilterChange?: (milestoneId: number | null) => void;
 }
@@ -41,6 +47,7 @@ export default function FileList({
   projectId,
   onFileDeleted,
   milestones,
+  collaborators,
   selectedMilestoneId,
   onMilestoneFilterChange,
 }: FileListProps) {
@@ -202,6 +209,8 @@ export default function FileList({
           file={selectedFile}
           isOpen={true}
           onClose={() => setSelectedFile(null)}
+          milestones={milestones}
+          collaborators={collaborators}
         />
       )}
     </>

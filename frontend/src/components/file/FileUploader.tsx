@@ -1,15 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import ProgressBar from '../ui/ProgressBar';
-import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 
-const ALLOWED_TYPES = [
-  'image/png', 'image/jpeg', 'image/webp',
-  'application/pdf',
-  'application/acad', 'application/dxf', 'image/vnd.dwg',
-  'application/octet-stream',
-  'model/obj', 'model/stl',
-];
 const ALLOWED_EXTENSIONS = [
   '.png', '.jpg', '.jpeg', '.webp', '.pdf',
   '.dwg', '.dxf', '.skp', '.rvt',
@@ -28,6 +20,9 @@ interface FileUploaderProps {
   onUploadSuccess: () => void;
   milestones?: Milestone[];
   onMilestoneSelect?: (milestoneId: number | null) => void;
+  // Upload a new revision of an existing design item (T1).
+  fileId?: string | null;
+  revisionMessage?: string;
 }
 
 interface UploadTask {
@@ -44,6 +39,8 @@ export default function FileUploader({
   onUploadSuccess,
   milestones,
   onMilestoneSelect,
+  fileId,
+  revisionMessage,
 }: FileUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
@@ -67,17 +64,18 @@ export default function FileUploader({
     );
 
     try {
-      const { default: apiClient } = await import('../../api/client');
       const isMultipart = task.file.size > MULTIPART_THRESHOLD;
 
       if (!isMultipart) {
         const { getUploadUrl, uploadComplete } = await import('../../api/endpoints/files');
-        const { url, file_id } = await getUploadUrl({
+        const { url, file_id, key } = await getUploadUrl({
           project_id: projectId,
           milestone_id: milestoneIdValue || null,
           filename: task.file.name,
           content_type: task.file.type || 'application/octet-stream',
           file_size: task.file.size,
+          file_id: fileId || undefined,
+          revision_message: revisionMessage || undefined,
         });
 
         await new Promise<void>((resolve, reject) => {
@@ -103,7 +101,7 @@ export default function FileUploader({
           xhr.send(task.file);
         });
 
-        await uploadComplete(file_id);
+        await uploadComplete(file_id, key, revisionMessage || undefined);
       } else {
         const { initiateMultipart, getPartUrls, completeMultipart } = await import('../../api/endpoints/files');
         const partSize = 25 * 1024 * 1024; // 25MB
@@ -115,6 +113,8 @@ export default function FileUploader({
           content_type: task.file.type || 'application/octet-stream',
           file_size: task.file.size,
           part_size: partSize,
+          file_id: fileId || undefined,
+          revision_message: revisionMessage || undefined,
         });
 
         const partCount = Math.ceil(task.file.size / partSize);
@@ -167,6 +167,10 @@ export default function FileUploader({
         }
 
         await completeMultipart(upload_id, { key, parts });
+
+        // Record the revision (large-file path) with the uploaded key (T1/T8).
+        const { uploadComplete } = await import('../../api/endpoints/files');
+        await uploadComplete(file_id, key, revisionMessage || undefined);
       }
 
       setUploadTasks((prev) =>

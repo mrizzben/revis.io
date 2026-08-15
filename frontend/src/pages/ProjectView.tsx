@@ -11,6 +11,7 @@ import FileList from '../components/file/FileList';
 import MilestoneTimeline from '../components/milestone/MilestoneTimeline';
 import KanbanBoard from '../components/project/KanbanBoard';
 import InternalPanel from '../components/collaboration/InternalPanel';
+import ActivityTimeline from '../components/activity/ActivityTimeline';
 import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
 
@@ -232,8 +233,8 @@ export default function ProjectView() {
           )}
         </div>
 
-        {/* Side panel: Project info */}
-        <div className="order-1 lg:order-2">
+        {/* Side panel: Project info + activity */}
+        <div className="order-1 lg:order-2 space-y-6">
           <div className="card">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Project Info</h2>
             <div className="space-y-3 text-sm">
@@ -253,6 +254,8 @@ export default function ProjectView() {
               </div>
             </div>
           </div>
+
+          <ActivityTimeline projectId={projectIdNum} />
         </div>
       </div>
 

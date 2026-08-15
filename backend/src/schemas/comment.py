@@ -1,7 +1,6 @@
 """Pydantic schemas for comments."""
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -10,7 +9,9 @@ from src.core.sanitize import sanitize_text
 
 class CommentCreate(BaseModel):
     body: str = Field(..., min_length=1, max_length=5000)
-    parent_id: Optional[int] = None
+    parent_id: int | None = None
+    # Revision the comment applies to; null → applies to all revisions (T1).
+    version_id: int | None = None
 
     @field_validator("body", mode="after")
     @classmethod
@@ -19,8 +20,8 @@ class CommentCreate(BaseModel):
 
 
 class CommentUpdate(BaseModel):
-    body: Optional[str] = Field(None, max_length=5000)
-    is_resolved: Optional[bool] = None
+    body: str | None = Field(None, max_length=5000)
+    is_resolved: bool | None = None
 
     @field_validator("body", mode="after")
     @classmethod
@@ -32,9 +33,15 @@ class CommentResponse(BaseModel):
     id: int
     file_id: str
     parent_id: int | None
+    version_id: int | None = None
+    # 'revision' → applies to one revision; 'all' → applies to the item (T1).
+    scope: str = "all"
+    version_number: int | None = None
     body: str
     is_resolved: bool
-    author: Optional[dict] = None
+    resolved_at: datetime | None = None
+    resolved_by: dict | None = None
+    author: dict | None = None
     replies: list["CommentResponse"] = []
     created_at: datetime
     updated_at: datetime

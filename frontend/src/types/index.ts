@@ -105,10 +105,52 @@ export interface InviteClientRequest {
 // ── File / DesignFile ─────────────────────────────────────
 export type ThumbnailStatus = 'pending' | 'processing' | 'complete' | 'failed' | 'unsupported';
 
+export type RevisionVisibility =
+  | 'internal'
+  | 'review'
+  | 'client_issued'
+  | 'superseded'
+  | 'archived';
+
+export type ScanStatus = 'pending' | 'clean' | 'infected' | 'error' | 'skipped';
+
+export interface UserBrief {
+  id: number;
+  email?: string;
+  name: string;
+}
+
+export interface FileVersion {
+  id: number;
+  file_id: string;
+  version_number: number;
+  file_size: number;
+  content_hash: string | null;
+  revision_message: string | null;
+  name: string | null;
+  description: string | null;
+  visibility: RevisionVisibility;
+  scan_status: ScanStatus;
+  mime_valid: boolean;
+  restored_from_superseded: boolean;
+  milestone_id: number | null;
+  milestone_name: string | null;
+  issued_at: string | null;
+  superseded_at: string | null;
+  uploaded_by: UserBrief | null;
+  issued_by: UserBrief | null;
+  is_current: boolean;
+  download_url?: string | null;
+  created_at: string;
+}
+
 export interface DesignFile {
   id: string;
   project_id: number;
   milestone_id: number | null;
+  design_option_id: number | null;
+  design_option_name: string | null;
+  parent_file_id: string | null;
   filename: string;
   file_type: string;
   content_type: string;
@@ -117,6 +159,9 @@ export interface DesignFile {
   preview_status: string | null;
   is_deleted: boolean;
   version_number: number;
+  version_count: number;
+  current_version: FileVersion | null;
+  versions?: FileVersion[];
   comment_count: number;
   uploaded_by: User;
   created_at: string;
@@ -129,6 +174,12 @@ export interface UploadUrlRequest {
   filename: string;
   content_type: string;
   file_size: number;
+  // Upload a new revision of an existing design item (T1).
+  file_id?: string;
+  revision_message?: string;
+  name?: string;
+  description?: string;
+  design_option_id?: number;
 }
 
 export interface UploadUrlResponse {
@@ -144,6 +195,11 @@ export interface MultipartInitiateRequest {
   content_type: string;
   file_size: number;
   part_size: number;
+  file_id?: string;
+  revision_message?: string;
+  name?: string;
+  description?: string;
+  design_option_id?: number;
 }
 
 export interface MultipartInitiateResponse {
@@ -227,6 +283,89 @@ export interface UpdateCommentRequest {
   is_resolved?: boolean;
 }
 
+// ── Reviews (T3) ───────────────────────────────────────────
+export type ReviewStatus = 'draft' | 'in_review' | 'changes_requested' | 'approved';
+
+export interface Review {
+  id: number;
+  project_id: number;
+  file_id: string;
+  revision_id: number | null;
+  revision_number: number | null;
+  status: ReviewStatus;
+  is_client_review: boolean;
+  decision_comment: string | null;
+  requested_by: UserBrief | null;
+  reviewer: UserBrief | null;
+  decided_by: UserBrief | null;
+  decided_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateReviewRequest {
+  reviewer_id: number;
+  revision_id?: number | null;
+  is_client_review?: boolean;
+  note?: string;
+}
+
+export interface ReviewTransitionRequest {
+  action: 'start' | 'approve' | 'request_changes';
+  comment?: string;
+}
+
+// ── Activity (T6) ──────────────────────────────────────────
+export interface ActivityEvent {
+  id: number;
+  project_id: number;
+  event_type: string;
+  entity_type: string;
+  entity_id: string | null;
+  payload: Record<string, unknown>;
+  actor: UserBrief | null;
+  created_at: string;
+}
+
+// ── Design Options (T5) ────────────────────────────────────
+export interface DesignOption {
+  id: number;
+  project_id: number;
+  name: string;
+  description: string | null;
+  is_current: boolean;
+  is_archived: boolean;
+  file_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateDesignOptionRequest {
+  name: string;
+  description?: string;
+}
+
+export interface UpdateDesignOptionRequest {
+  name?: string;
+  description?: string;
+  is_current?: boolean;
+  is_archived?: boolean;
+}
+
+export interface ForkItemRequest {
+  file_id: string;
+}
+
+// ── Comparison (T4) ────────────────────────────────────────
+export interface ComparisonResult {
+  file_id: string;
+  file_type: string;
+  supported: boolean;
+  explanation: string | null;
+  from: FileVersion;
+  to: FileVersion;
+}
+
 // ── Internal Collaboration ────────────────────────────────
 export interface CollaboratorBrief {
   user_id: number;
@@ -293,6 +432,11 @@ export type WsEventType =
   | 'file_uploaded'
   | 'file_deleted'
   | 'file_updated'
+  | 'revision_created'
+  | 'revision_restored'
+  | 'revision_issued'
+  | 'review_requested'
+  | 'review_updated'
   | 'milestone_updated'
   | 'comment_added'
   | 'internal_note_added'

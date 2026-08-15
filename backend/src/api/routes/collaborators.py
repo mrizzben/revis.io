@@ -11,6 +11,7 @@ from src.api.dependencies import (
 )
 from src.models.project import Project
 from src.models.user import User
+from src.services import activity
 from src.services.collaboration import (
     add_collaborator as add_collaborator_svc,
 )
@@ -51,9 +52,20 @@ async def add_collaborator(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Provide either 'email' or 'user_id'",
         )
-    return await add_collaborator_svc(
+    result = await add_collaborator_svc(
         db, project_id, project, current_user, data.email, data.user_id
     )
+    await activity.record_event(
+        db,
+        project_id=project_id,
+        actor_id=current_user.id,
+        event_type="collaborator_added",
+        entity_type="project_member",
+        entity_id=result.get("user_id"),
+        payload={"name": result.get("name"), "email": result.get("email")},
+        visibility="internal",
+    )
+    return result
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -65,3 +77,13 @@ async def remove_collaborator(
     project: Project = Depends(get_project_for_owner),
 ):
     await remove_collaborator_svc(db, project_id, project, current_user, user_id)
+    await activity.record_event(
+        db,
+        project_id=project_id,
+        actor_id=current_user.id,
+        event_type="collaborator_removed",
+        entity_type="project_member",
+        entity_id=user_id,
+        payload={},
+        visibility="internal",
+    )

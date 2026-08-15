@@ -13,6 +13,8 @@ import type {
   CreateFirmRequest,
   User,
   UpdateFileMilestoneRequest,
+  FileVersion,
+  ComparisonResult,
 } from '../../types';
 
 // ── Files ────────────────────────────────────────────────
@@ -53,8 +55,21 @@ export async function abortMultipart(
   return response.data;
 }
 
-export async function uploadComplete(fileId: string): Promise<{ message: string }> {
-  const response = await apiClient.post(`/files/${fileId}/upload-complete`);
+export async function uploadComplete(
+  fileId: string,
+  key?: string,
+  revisionMessage?: string,
+  name?: string,
+  description?: string,
+): Promise<{ message: string }> {
+  const response = await apiClient.post(`/files/${fileId}/upload-complete`, null, {
+    params: {
+      key: key || undefined,
+      revision_message: revisionMessage || undefined,
+      name: name || undefined,
+      description: description || undefined,
+    },
+  });
   return response.data;
 }
 
@@ -119,5 +134,100 @@ export async function updateFileMilestone(
   data: UpdateFileMilestoneRequest,
 ): Promise<{ milestone_id: number | null }> {
   const response = await apiClient.patch(`/files/${fileId}`, data);
+  return response.data;
+}
+
+// ── Revisions (T1/T2) ─────────────────────────────────────
+
+export async function listVersions(fileId: string): Promise<FileVersion[]> {
+  const response = await apiClient.get(`/files/${fileId}/versions`);
+  return response.data;
+}
+
+export async function getVersionDetail(
+  fileId: string,
+  versionNumber: number,
+): Promise<FileVersion> {
+  const response = await apiClient.get(`/files/${fileId}/versions/${versionNumber}`);
+  return response.data;
+}
+
+export async function downloadVersion(
+  fileId: string,
+  versionNumber: number,
+): Promise<{ url: string }> {
+  const response = await apiClient.get(`/files/${fileId}/versions/${versionNumber}/download`);
+  return response.data;
+}
+
+export async function restoreVersion(
+  fileId: string,
+  versionNumber: number,
+): Promise<FileVersion> {
+  const response = await apiClient.post(`/files/${fileId}/versions/${versionNumber}/restore`);
+  return response.data;
+}
+
+export async function issueVersion(fileId: string, versionNumber: number): Promise<FileVersion> {
+  const response = await apiClient.post(`/files/${fileId}/versions/${versionNumber}/issue`);
+  return response.data;
+}
+
+export async function supersedeVersion(
+  fileId: string,
+  versionNumber: number,
+): Promise<FileVersion> {
+  const response = await apiClient.post(`/files/${fileId}/versions/${versionNumber}/supersede`);
+  return response.data;
+}
+
+export async function archiveVersion(
+  fileId: string,
+  versionNumber: number,
+): Promise<FileVersion> {
+  const response = await apiClient.post(`/files/${fileId}/versions/${versionNumber}/archive`);
+  return response.data;
+}
+
+export async function setVersionReview(
+  fileId: string,
+  versionNumber: number,
+  inReview: boolean,
+): Promise<FileVersion> {
+  const response = await apiClient.post(`/files/${fileId}/versions/${versionNumber}/review`, { in_review: inReview });
+  return response.data;
+}
+
+export async function updateVersionMeta(
+  fileId: string,
+  versionNumber: number,
+  data: {
+    name?: string | null;
+    description?: string | null;
+    milestone_id?: number | null;
+    revision_message?: string | null;
+  },
+): Promise<FileVersion> {
+  const response = await apiClient.patch(`/files/${fileId}/versions/${versionNumber}`, data);
+  return response.data;
+}
+
+export async function compareVersions(
+  fileId: string,
+  fromVersion: number,
+  toVersion: number,
+): Promise<ComparisonResult> {
+  const response = await apiClient.post(`/files/${fileId}/compare`, {
+    from_version: fromVersion,
+    to_version: toVersion,
+  });
+  return response.data;
+}
+
+export async function rescanVersion(
+  fileId: string,
+  versionNumber: number,
+): Promise<{ version_number: number; scan_status: string }> {
+  const response = await apiClient.post(`/files/${fileId}/versions/${versionNumber}/scan`);
   return response.data;
 }
