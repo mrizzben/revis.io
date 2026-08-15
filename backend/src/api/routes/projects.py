@@ -77,15 +77,9 @@ async def list_project_files(
             versions = await file_service.list_client_versions(db, str(f.id))
             if versions:
                 visible.append(f)
-        return [
-            await file_service.build_file_payload(db, f, current_user)
-            for f in visible
-        ]
+        return [await file_service.build_file_payload(db, f, current_user) for f in visible]
 
-    return [
-        await file_service.build_file_payload(db, f, current_user)
-        for f in files
-    ]
+    return [await file_service.build_file_payload(db, f, current_user) for f in files]
 
 
 @router.get("/{project_id}")
@@ -105,9 +99,7 @@ async def get_project(
 
     # Get milestones
     milestone_result = await db.execute(
-        select(Milestone)
-        .where(Milestone.project_id == project_id)
-        .order_by(Milestone.position)
+        select(Milestone).where(Milestone.project_id == project_id).order_by(Milestone.position)
     )
     milestones = milestone_result.scalars().all()
 
@@ -127,31 +119,33 @@ async def get_project(
             if versions:
                 visible_files.append(f)
         file_payloads = [
-            await file_service.build_file_payload(db, f, current_user)
-            for f in visible_files
+            await file_service.build_file_payload(db, f, current_user) for f in visible_files
         ]
     else:
-        file_payloads = [
-            await file_service.build_file_payload(db, f, current_user)
-            for f in files
-        ]
+        file_payloads = [await file_service.build_file_payload(db, f, current_user) for f in files]
 
     # Counts
     from sqlalchemy import func
 
     file_count = await db.execute(
-        select(func.count()).select_from(DesignFile).where(
+        select(func.count())
+        .select_from(DesignFile)
+        .where(
             DesignFile.project_id == project_id,
             DesignFile.is_deleted.is_(False),
         )
     )
     milestone_count_result = await db.execute(
-        select(func.count()).select_from(Milestone).where(
+        select(func.count())
+        .select_from(Milestone)
+        .where(
             Milestone.project_id == project_id,
         )
     )
     completed_count = await db.execute(
-        select(func.count()).select_from(Milestone).where(
+        select(func.count())
+        .select_from(Milestone)
+        .where(
             Milestone.project_id == project_id,
             Milestone.is_completed.is_(True),
         )
@@ -235,6 +229,7 @@ async def delete_project(
 
 
 # ── Invitations ───────────────────────────────────────────
+
 
 @router.post("/{project_id}/invite", status_code=status.HTTP_201_CREATED)
 async def invite_client(

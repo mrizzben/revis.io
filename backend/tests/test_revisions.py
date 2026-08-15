@@ -43,7 +43,9 @@ async def _upload_revision(
         params["revision_message"] = message
     if name:
         params["name"] = name
-    resp = await client.post(f"/api/files/{file_id}/upload-complete", params=params, headers=auth_headers)
+    resp = await client.post(
+        f"/api/files/{file_id}/upload-complete", params=params, headers=auth_headers
+    )
     assert resp.status_code == 200, resp.text
     return resp.json()
 
@@ -53,7 +55,9 @@ async def test_second_upload_is_revision_2_of_same_item(
 ):
     file, v1 = await seed_file(project.id, test_architect.id, content=b"%PDF-1.4 v1")
 
-    result = await _upload_revision(client, auth_headers, str(file.id), fake_s3, b"%PDF-1.4 v2", message="Added section B")
+    result = await _upload_revision(
+        client, auth_headers, str(file.id), fake_s3, b"%PDF-1.4 v2", message="Added section B"
+    )
 
     assert result["version_number"] == 2
 
@@ -106,13 +110,22 @@ async def test_issue_marks_revision_client_issued_and_supersedes_previous(
 
 
 async def test_client_only_sees_issued_revisions(
-    client, auth_headers, client_auth_headers, project, test_architect, seed_file, fake_s3, client_member
+    client,
+    auth_headers,
+    client_auth_headers,
+    project,
+    test_architect,
+    seed_file,
+    fake_s3,
+    client_member,
 ):
     file, v1 = await seed_file(project.id, test_architect.id, content=b"%PDF-1.4 v1")
     # Upload an internal revision — client must not see it at all.
     await _upload_revision(client, auth_headers, str(file.id), fake_s3, b"%PDF-1.4 v2-internal")
 
-    files = (await client.get(f"/api/projects/{project.id}/files", headers=client_auth_headers)).json()
+    files = (
+        await client.get(f"/api/projects/{project.id}/files", headers=client_auth_headers)
+    ).json()
     assert files == []
 
     detail = await client.get(f"/api/projects/{project.id}", headers=client_auth_headers)
@@ -121,7 +134,9 @@ async def test_client_only_sees_issued_revisions(
 
     # Issue v1 → client sees only v1, current.
     await client.post(f"/api/files/{file.id}/versions/1/issue", headers=auth_headers)
-    files = (await client.get(f"/api/projects/{project.id}/files", headers=client_auth_headers)).json()
+    files = (
+        await client.get(f"/api/projects/{project.id}/files", headers=client_auth_headers)
+    ).json()
     assert len(files) == 1
     item = files[0]
     assert item["current_version"]["version_number"] == 1
@@ -136,20 +151,36 @@ async def test_client_only_sees_issued_revisions(
 
 
 async def test_client_sees_latest_issued_as_current_even_after_internal_upload(
-    client, auth_headers, client_auth_headers, project, test_architect, seed_file, fake_s3, client_member
+    client,
+    auth_headers,
+    client_auth_headers,
+    project,
+    test_architect,
+    seed_file,
+    fake_s3,
+    client_member,
 ):
     file, v1 = await seed_file(project.id, test_architect.id, content=b"%PDF-1.4 v1")
     await client.post(f"/api/files/{file.id}/versions/1/issue", headers=auth_headers)
     # Internal upload after issuing.
     await _upload_revision(client, auth_headers, str(file.id), fake_s3, b"%PDF-1.4 v2-internal")
 
-    files = (await client.get(f"/api/projects/{project.id}/files", headers=client_auth_headers)).json()
+    files = (
+        await client.get(f"/api/projects/{project.id}/files", headers=client_auth_headers)
+    ).json()
     assert files[0]["current_version"]["version_number"] == 1
     assert files[0]["version_number"] == 1
 
 
 async def test_comments_preserved_and_scoped_to_revisions(
-    client, auth_headers, client_auth_headers, project, test_architect, seed_file, fake_s3, client_member
+    client,
+    auth_headers,
+    client_auth_headers,
+    project,
+    test_architect,
+    seed_file,
+    fake_s3,
+    client_member,
 ):
     file, v1 = await seed_file(project.id, test_architect.id, content=b"%PDF-1.4 v1")
     await client.post(f"/api/files/{file.id}/versions/1/issue", headers=auth_headers)
@@ -209,7 +240,13 @@ async def test_archive_hides_from_normal_views(
     versions = (await client.get(f"/api/files/{file.id}/versions", headers=auth_headers)).json()
     assert [v["version_number"] for v in versions] == [2]
 
-    archived = (await client.get(f"/api/files/{file.id}/versions", params={"include_archived": "true"}, headers=auth_headers)).json()
+    archived = (
+        await client.get(
+            f"/api/files/{file.id}/versions",
+            params={"include_archived": "true"},
+            headers=auth_headers,
+        )
+    ).json()
     assert {v["version_number"] for v in archived} == {1, 2}
 
 
@@ -224,24 +261,36 @@ async def test_client_cannot_issue_or_restore(
 
 
 async def test_revision_download_uses_issued_key_for_client(
-    client, auth_headers, client_auth_headers, project, test_architect, seed_file, fake_s3, client_member
+    client,
+    auth_headers,
+    client_auth_headers,
+    project,
+    test_architect,
+    seed_file,
+    fake_s3,
+    client_member,
 ):
     file, v1 = await seed_file(project.id, test_architect.id, content=b"%PDF-1.4 v1")
     await client.post(f"/api/files/{file.id}/versions/1/issue", headers=auth_headers)
     await _upload_revision(client, auth_headers, str(file.id), fake_s3, b"%PDF-1.4 v2-internal")
 
     # Client download resolves to the issued revision's key.
-    r = await client.get(f"/api/files/{file.id}/download", headers=client_auth_headers, follow_redirects=False)
+    r = await client.get(
+        f"/api/files/{file.id}/download", headers=client_auth_headers, follow_redirects=False
+    )
     assert r.status_code == 302
     assert v1.s3_key in r.headers["location"]
 
     # Architect download resolves to the current (internal) revision key.
-    r = await client.get(f"/api/files/{file.id}/download", headers=auth_headers, follow_redirects=False)
+    r = await client.get(
+        f"/api/files/{file.id}/download", headers=auth_headers, follow_redirects=False
+    )
     assert r.status_code == 302
     assert "v2" in r.headers["location"] or "revision.bin" in r.headers["location"]
 
 
 # ── T4 comparison ──────────────────────────────────────────
+
 
 async def test_compare_supported_revisions(
     client, auth_headers, project, test_architect, seed_file, fake_s3
@@ -283,13 +332,21 @@ async def test_compare_unsupported_format_explains_not_available(
     db_session.add(file)
     await db_session.flush()
     v1 = FileVersion(
-        file_id=file.id, version_number=1, s3_key=file.s3_key, file_size=5,
-        uploaded_by_id=test_architect.id, visibility=RevisionVisibility.internal,
+        file_id=file.id,
+        version_number=1,
+        s3_key=file.s3_key,
+        file_size=5,
+        uploaded_by_id=test_architect.id,
+        visibility=RevisionVisibility.internal,
         scan_status=ScanStatus.clean,
     )
     v2 = FileVersion(
-        file_id=file.id, version_number=2, s3_key=file.s3_key, file_size=5,
-        uploaded_by_id=test_architect.id, visibility=RevisionVisibility.internal,
+        file_id=file.id,
+        version_number=2,
+        s3_key=file.s3_key,
+        file_size=5,
+        uploaded_by_id=test_architect.id,
+        visibility=RevisionVisibility.internal,
         scan_status=ScanStatus.clean,
     )
     db_session.add_all([v1, v2])
@@ -307,7 +364,14 @@ async def test_compare_unsupported_format_explains_not_available(
 
 
 async def test_client_cannot_compare_internal_revisions(
-    client, auth_headers, client_auth_headers, project, test_architect, seed_file, fake_s3, client_member
+    client,
+    auth_headers,
+    client_auth_headers,
+    project,
+    test_architect,
+    seed_file,
+    fake_s3,
+    client_member,
 ):
     file, v1 = await seed_file(project.id, test_architect.id, content=b"%PDF-1.4 v1")
     await _upload_revision(client, auth_headers, str(file.id), fake_s3, b"%PDF-1.4 v2-internal")

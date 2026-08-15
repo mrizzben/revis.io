@@ -46,10 +46,7 @@ export default function ProjectManage() {
     queryFn: async () => {
       const resp = await listCollaborators(projectIdNum);
       const owner = resp.owner ? [{ id: resp.owner.user_id, name: resp.owner.name }] : [];
-      return [
-        ...owner,
-        ...resp.collaborators.map((c) => ({ id: c.user_id, name: c.name })),
-      ];
+      return [...owner, ...resp.collaborators.map((c) => ({ id: c.user_id, name: c.name }))];
     },
     enabled: !!projectIdNum,
   });

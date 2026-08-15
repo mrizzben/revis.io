@@ -34,9 +34,7 @@ async def create_milestone(
     db: DBSession,
     current_user: User = Depends(require_role("architect")),
 ):
-    milestone = await MilestoneService.create_milestone(
-        db, project_id, data, current_user
-    )
+    milestone = await MilestoneService.create_milestone(db, project_id, data, current_user)
     await activity.record_event(
         db,
         project_id=project_id,
@@ -60,9 +58,7 @@ async def update_milestone(
     db: DBSession,
     current_user: User = Depends(require_role("architect")),
 ):
-    milestone = await MilestoneService.update_milestone(
-        db, milestone_id, data, current_user
-    )
+    milestone = await MilestoneService.update_milestone(db, milestone_id, data, current_user)
     await activity.record_event(
         db,
         project_id=milestone.project_id,

@@ -111,6 +111,7 @@ async def _resolve_upload_target(
 
 # ── Upload URL (Single PUT) ───────────────────────────────
 
+
 @router.post("/upload-url")
 async def get_upload_url(
     request: FileUploadUrlRequest,
@@ -137,6 +138,7 @@ async def get_upload_url(
 
 
 # ── Multipart Upload ──────────────────────────────────────
+
 
 @router.post("/multipart/initiate")
 async def initiate_multipart(
@@ -209,6 +211,7 @@ async def abort_multipart(
 
 # ── Upload completion → revision recording (T1/T8) ────────
 
+
 @router.post("/{file_id}/upload-complete")
 async def upload_complete(
     file_id: str,
@@ -228,7 +231,9 @@ async def upload_complete(
     freshly uploaded object's S3 key returned by upload-url/initiate.
     """
     file = await file_service.get_file(db, file_id)
-    await project_service._get_project_with_access(db, file.project_id, current_user, require_owner=True)
+    await project_service._get_project_with_access(
+        db, file.project_id, current_user, require_owner=True
+    )
 
     if milestone_id is not None:
         await _validate_milestone(db, milestone_id, file.project_id)
@@ -245,12 +250,19 @@ async def upload_complete(
     )
 
     # Team-only broadcast: internal drafts must not reach clients (T7).
-    team_ids = [m.user_id for m in (await db.execute(
-        select(ProjectMember).where(
-            ProjectMember.project_id == file.project_id,
-            ProjectMember.role == "collaborator",
+    team_ids = [
+        m.user_id
+        for m in (
+            await db.execute(
+                select(ProjectMember).where(
+                    ProjectMember.project_id == file.project_id,
+                    ProjectMember.role == "collaborator",
+                )
+            )
         )
-    )).scalars().all()]
+        .scalars()
+        .all()
+    ]
     owner_id = await _project_owner_id(db, file.project_id)
     if owner_id:
         team_ids.append(owner_id)
@@ -297,6 +309,7 @@ async def upload_complete(
 
 # ── Project file listing (role-aware, T7) ─────────────────
 
+
 async def _list_files_route(
     project_id: int,
     db: DBSession,
@@ -323,18 +336,13 @@ async def _list_files_route(
             versions = await file_service.list_client_versions(db, str(f.id))
             if versions:
                 visible.append((f, versions))
-        return [
-            await file_service.build_file_payload(db, f, current_user)
-            for f, _ in visible
-        ]
+        return [await file_service.build_file_payload(db, f, current_user) for f, _ in visible]
 
-    return [
-        await file_service.build_file_payload(db, f, current_user)
-        for f in files
-    ]
+    return [await file_service.build_file_payload(db, f, current_user) for f in files]
 
 
 # ── File Management ───────────────────────────────────────
+
 
 @router.get("/{file_id}")
 async def get_file(
@@ -404,7 +412,9 @@ async def get_download_url(
         versions = await file_service.list_client_versions(db, str(file.id))
         version = file_service.effective_client_version(versions)
         if not version:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No issued revision available")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="No issued revision available"
+            )
     else:
         version = None
         if file.current_version_id:
@@ -415,7 +425,9 @@ async def get_download_url(
             )
             version = vresult.scalar_one_or_none()
         if not version:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No revision available")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="No revision available"
+            )
 
     url = file_service.create_presigned_download_url(
         key=version.s3_key,
@@ -521,6 +533,7 @@ async def get_preview(
 
 # ── Revision endpoints (T1/T2/T7) ─────────────────────────
 
+
 async def _get_version_or_404(db: DBSession, file_id: str, version_number: int):
     version = await file_service.get_version(db, file_id, version_number)
     return version
@@ -547,7 +560,9 @@ async def list_versions(
     if current_user.role == UserRole.client:
         versions = await file_service.list_client_versions(db, str(file.id))
     else:
-        versions = await file_service.list_versions(db, str(file.id), include_archived=include_archived)
+        versions = await file_service.list_versions(
+            db, str(file.id), include_archived=include_archived
+        )
 
     current_id = file.current_version_id
     return [
@@ -613,14 +628,20 @@ async def update_version_meta(
 ):
     """Rename a checkpoint, attach an issue note, associate a milestone (T2)."""
     file = await file_service.get_file(db, file_id)
-    await project_service._get_project_with_access(db, file.project_id, current_user, require_owner=True)
+    await project_service._get_project_with_access(
+        db, file.project_id, current_user, require_owner=True
+    )
     if data.milestone_id is not None:
         await _validate_milestone(db, data.milestone_id, file.project_id)
 
     version = await file_service.update_version_meta(
-        db, str(file.id), version_number,
-        name=data.name, description=data.description,
-        milestone_id=data.milestone_id, revision_message=data.revision_message,
+        db,
+        str(file.id),
+        version_number,
+        name=data.name,
+        description=data.description,
+        milestone_id=data.milestone_id,
+        revision_message=data.revision_message,
     )
     await activity.record_event(
         db,
@@ -629,7 +650,11 @@ async def update_version_meta(
         event_type="revision_updated",
         entity_type="file_version",
         entity_id=version.id,
-        payload={"file_id": str(file.id), "file_name": file.filename, "version_number": version.version_number},
+        payload={
+            "file_id": str(file.id),
+            "file_name": file.filename,
+            "version_number": version.version_number,
+        },
         visibility="internal",
     )
     return file_service.build_version_payload(version)
@@ -644,7 +669,9 @@ async def restore_version(
 ):
     """Restore a prior revision as current without deleting history (T1)."""
     file = await file_service.get_file(db, file_id)
-    await project_service._get_project_with_access(db, file.project_id, current_user, require_owner=True)
+    await project_service._get_project_with_access(
+        db, file.project_id, current_user, require_owner=True
+    )
     version = await file_service.restore_version(db, str(file.id), version_number, current_user)
 
     client_visible = version.visibility in (
@@ -658,7 +685,11 @@ async def restore_version(
         event_type="revision_restored",
         entity_type="file_version",
         entity_id=version.id,
-        payload={"file_id": str(file.id), "file_name": file.filename, "version_number": version.version_number},
+        payload={
+            "file_id": str(file.id),
+            "file_name": file.filename,
+            "version_number": version.version_number,
+        },
         visibility="client" if client_visible else "internal",
     )
     try:
@@ -673,17 +704,29 @@ async def restore_version(
         else:
             from src.models.project import Project
 
-            proj = (await db.execute(select(Project).where(Project.id == file.project_id))).scalar_one_or_none()
-            team_ids = [m.user_id for m in (await db.execute(
-                select(ProjectMember).where(
-                    ProjectMember.project_id == file.project_id,
-                    ProjectMember.role == "collaborator",
+            proj = (
+                await db.execute(select(Project).where(Project.id == file.project_id))
+            ).scalar_one_or_none()
+            team_ids = [
+                m.user_id
+                for m in (
+                    await db.execute(
+                        select(ProjectMember).where(
+                            ProjectMember.project_id == file.project_id,
+                            ProjectMember.role == "collaborator",
+                        )
+                    )
                 )
-            )).scalars().all()]
+                .scalars()
+                .all()
+            ]
             if proj:
                 team_ids.append(proj.owner_id)
             await ws.broadcast_to_project_team(
-                file.project_id, msg, team_user_ids=list(set(team_ids)), exclude_user_id=current_user.id
+                file.project_id,
+                msg,
+                team_user_ids=list(set(team_ids)),
+                exclude_user_id=current_user.id,
             )
     except RuntimeError:
         pass
@@ -700,7 +743,9 @@ async def issue_version(
 ):
     """Explicitly issue a revision to the client (T2/T7)."""
     file = await file_service.get_file(db, file_id)
-    await project_service._get_project_with_access(db, file.project_id, current_user, require_owner=True)
+    await project_service._get_project_with_access(
+        db, file.project_id, current_user, require_owner=True
+    )
     version = await file_service.issue_version(db, str(file.id), version_number, current_user)
 
     await send_revision_issued_notifications(
@@ -748,7 +793,9 @@ async def supersede_version(
 ):
     """Mark a revision superseded without deleting it (T2)."""
     file = await file_service.get_file(db, file_id)
-    await project_service._get_project_with_access(db, file.project_id, current_user, require_owner=True)
+    await project_service._get_project_with_access(
+        db, file.project_id, current_user, require_owner=True
+    )
     version = await file_service.supersede_version(db, str(file.id), version_number, current_user)
 
     await activity.record_event(
@@ -758,7 +805,11 @@ async def supersede_version(
         event_type="revision_superseded",
         entity_type="file_version",
         entity_id=version.id,
-        payload={"file_id": str(file.id), "file_name": file.filename, "version_number": version.version_number},
+        payload={
+            "file_id": str(file.id),
+            "file_name": file.filename,
+            "version_number": version.version_number,
+        },
         visibility="client",
     )
     return file_service.build_version_payload(version)
@@ -773,7 +824,9 @@ async def archive_version(
 ):
     """Archive a revision: hidden from normal views, retained for audit (T2/T7)."""
     file = await file_service.get_file(db, file_id)
-    await project_service._get_project_with_access(db, file.project_id, current_user, require_owner=True)
+    await project_service._get_project_with_access(
+        db, file.project_id, current_user, require_owner=True
+    )
     version = await file_service.archive_version(db, str(file.id), version_number)
 
     await activity.record_event(
@@ -783,7 +836,11 @@ async def archive_version(
         event_type="revision_archived",
         entity_type="file_version",
         entity_id=version.id,
-        payload={"file_id": str(file.id), "file_name": file.filename, "version_number": version.version_number},
+        payload={
+            "file_id": str(file.id),
+            "file_name": file.filename,
+            "version_number": version.version_number,
+        },
         visibility="internal",
     )
     return file_service.build_version_payload(version)
@@ -799,7 +856,9 @@ async def set_review_state(
 ):
     """Move a draft between internal and internal-review state (T2)."""
     file = await file_service.get_file(db, file_id)
-    await project_service._get_project_with_access(db, file.project_id, current_user, require_owner=True)
+    await project_service._get_project_with_access(
+        db, file.project_id, current_user, require_owner=True
+    )
     version = await file_service.set_review_state(db, str(file.id), version_number, in_review)
 
     await activity.record_event(
@@ -809,7 +868,11 @@ async def set_review_state(
         event_type="revision_updated",
         entity_type="file_version",
         entity_id=version.id,
-        payload={"file_id": str(file.id), "file_name": file.filename, "version_number": version.version_number},
+        payload={
+            "file_id": str(file.id),
+            "file_name": file.filename,
+            "version_number": version.version_number,
+        },
         visibility="internal",
     )
     return file_service.build_version_payload(version)
@@ -824,9 +887,10 @@ async def rescan_version(
 ):
     """Re-run the malware scan for a revision (T8)."""
     file = await file_service.get_file(db, file_id)
-    await project_service._get_project_with_access(db, file.project_id, current_user, require_owner=True)
+    await project_service._get_project_with_access(
+        db, file.project_id, current_user, require_owner=True
+    )
     version = await file_service.get_version(db, str(file.id), version_number)
-
 
     s3 = file_service._get_lazy_s3_client()
     version.scan_status = file_service.scan_object_with_clamd(
@@ -838,6 +902,7 @@ async def rescan_version(
 
 
 # ── Comparison (T4) ───────────────────────────────────────
+
 
 @router.post("/{file_id}/compare")
 async def compare_versions(
