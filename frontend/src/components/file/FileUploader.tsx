@@ -1,19 +1,20 @@
 import { useCallback, useRef, useState } from 'react';
 import ProgressBar from '../ui/ProgressBar';
-import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 
-const ALLOWED_TYPES = [
-  'image/png', 'image/jpeg', 'image/webp',
-  'application/pdf',
-  'application/acad', 'application/dxf', 'image/vnd.dwg',
-  'application/octet-stream',
-  'model/obj', 'model/stl',
-];
 const ALLOWED_EXTENSIONS = [
-  '.png', '.jpg', '.jpeg', '.webp', '.pdf',
-  '.dwg', '.dxf', '.skp', '.rvt',
-  '.ifc', '.obj', '.stl',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.pdf',
+  '.dwg',
+  '.dxf',
+  '.skp',
+  '.rvt',
+  '.ifc',
+  '.obj',
+  '.stl',
 ];
 const MULTIPART_THRESHOLD = 100 * 1024 * 1024; // 100MB
 
@@ -28,6 +29,9 @@ interface FileUploaderProps {
   onUploadSuccess: () => void;
   milestones?: Milestone[];
   onMilestoneSelect?: (milestoneId: number | null) => void;
+  // Upload a new revision of an existing design item (T1).
+  fileId?: string | null;
+  revisionMessage?: string;
 }
 
 interface UploadTask {
@@ -44,6 +48,8 @@ export default function FileUploader({
   onUploadSuccess,
   milestones,
   onMilestoneSelect,
+  fileId,
+  revisionMessage,
 }: FileUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
@@ -63,21 +69,22 @@ export default function FileUploader({
 
   const uploadFile = async (task: UploadTask) => {
     setUploadTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? { ...t, status: 'uploading' as const } : t))
+      prev.map((t) => (t.id === task.id ? { ...t, status: 'uploading' as const } : t)),
     );
 
     try {
-      const { default: apiClient } = await import('../../api/client');
       const isMultipart = task.file.size > MULTIPART_THRESHOLD;
 
       if (!isMultipart) {
         const { getUploadUrl, uploadComplete } = await import('../../api/endpoints/files');
-        const { url, file_id } = await getUploadUrl({
+        const { url, file_id, key } = await getUploadUrl({
           project_id: projectId,
           milestone_id: milestoneIdValue || null,
           filename: task.file.name,
           content_type: task.file.type || 'application/octet-stream',
           file_size: task.file.size,
+          file_id: fileId || undefined,
+          revision_message: revisionMessage || undefined,
         });
 
         await new Promise<void>((resolve, reject) => {
@@ -89,7 +96,7 @@ export default function FileUploader({
             if (event.lengthComputable) {
               const pct = Math.round((event.loaded / event.total) * 100);
               setUploadTasks((prev) =>
-                prev.map((t) => (t.id === task.id ? { ...t, progress: pct } : t))
+                prev.map((t) => (t.id === task.id ? { ...t, progress: pct } : t)),
               );
             }
           };
@@ -103,9 +110,10 @@ export default function FileUploader({
           xhr.send(task.file);
         });
 
-        await uploadComplete(file_id);
+        await uploadComplete(file_id, key, revisionMessage || undefined);
       } else {
-        const { initiateMultipart, getPartUrls, completeMultipart } = await import('../../api/endpoints/files');
+        const { initiateMultipart, getPartUrls, completeMultipart } =
+          await import('../../api/endpoints/files');
         const partSize = 25 * 1024 * 1024; // 25MB
 
         const { upload_id, key, file_id } = await initiateMultipart({
@@ -115,16 +123,15 @@ export default function FileUploader({
           content_type: task.file.type || 'application/octet-stream',
           file_size: task.file.size,
           part_size: partSize,
+          file_id: fileId || undefined,
+          revision_message: revisionMessage || undefined,
         });
 
         const partCount = Math.ceil(task.file.size / partSize);
         const parts: Array<{ PartNumber: number; ETag: string }> = [];
 
         for (let i = 0; i < partCount; i += 5) {
-          const batch = Array.from(
-            { length: Math.min(5, partCount - i) },
-            (_, j) => i + j + 1
-          );
+          const batch = Array.from({ length: Math.min(5, partCount - i) }, (_, j) => i + j + 1);
 
           const { urls } = await getPartUrls(upload_id, {
             key,
@@ -152,31 +159,37 @@ export default function FileUploader({
                 xhr.upload.onprogress = (event) => {
                   if (event.lengthComputable) {
                     const partProgress = Math.round((event.loaded / event.total) * 100);
-                    const overall = Math.round(((partNum - 1 + partProgress / 100) / partCount) * 100);
+                    const overall = Math.round(
+                      ((partNum - 1 + partProgress / 100) / partCount) * 100,
+                    );
                     setUploadTasks((prev) =>
-                      prev.map((t) => (t.id === task.id ? { ...t, progress: overall } : t))
+                      prev.map((t) => (t.id === task.id ? { ...t, progress: overall } : t)),
                     );
                   }
                 };
                 xhr.send(chunk);
               });
               return { PartNumber: partNum, ETag: xhrResult.ETag };
-            })
+            }),
           );
           parts.push(...batchResults);
         }
 
         await completeMultipart(upload_id, { key, parts });
+
+        // Record the revision (large-file path) with the uploaded key (T1/T8).
+        const { uploadComplete } = await import('../../api/endpoints/files');
+        await uploadComplete(file_id, key, revisionMessage || undefined);
       }
 
       setUploadTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: 'complete', progress: 100 } : t))
+        prev.map((t) => (t.id === task.id ? { ...t, status: 'complete', progress: 100 } : t)),
       );
       onUploadSuccess();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Upload failed';
       setUploadTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: 'error', error: msg } : t))
+        prev.map((t) => (t.id === task.id ? { ...t, status: 'error', error: msg } : t)),
       );
     }
   };
@@ -229,7 +242,9 @@ export default function FileUploader({
           >
             <option value="">No milestone</option>
             {milestones.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
             ))}
           </select>
         </div>
@@ -237,16 +252,30 @@ export default function FileUploader({
 
       <div
         className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-          isDragOver ? 'border-primary-400 bg-primary-50' : 'border-gray-300 hover:border-primary-300'
+          isDragOver
+            ? 'border-primary-400 bg-primary-50'
+            : 'border-gray-300 hover:border-primary-300'
         }`}
-        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <svg className="w-10 h-10 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        <svg
+          className="w-10 h-10 text-gray-400 mx-auto mb-3"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+          />
         </svg>
         <p className="text-gray-600">
           <span className="text-primary-600 font-medium">Click to upload</span> or drag and drop
@@ -280,9 +309,7 @@ export default function FileUploader({
                 </span>
               </div>
               <ProgressBar value={task.progress} size="sm" showPercentage />
-              {task.error && (
-                <p className="text-xs text-red-600 mt-1">{task.error}</p>
-              )}
+              {task.error && <p className="text-xs text-red-600 mt-1">{task.error}</p>}
             </div>
           ))}
         </div>

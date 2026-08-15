@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
 import { getDownloadUrl } from '../../api/endpoints/files';
-import { DesignFile } from '../../types';
+import { DesignFile, FileVersion } from '../../types';
 import Modal from '../ui/Modal';
 import Badge from '../ui/Badge';
 import Spinner from '../ui/Spinner';
 import CommentThread from '../comment/CommentThread';
+import RevisionPanel from '../revision/RevisionPanel';
+import CompareModal from '../revision/CompareModal';
+import ReviewPanel from '../revision/ReviewPanel';
 import useAuthStore from '../../stores/authStore';
 
 interface FileViewerProps {
   file: DesignFile;
   isOpen: boolean;
   onClose: () => void;
+  milestones?: { id: number; name: string }[];
+  collaborators?: { id: number; name: string }[];
 }
 
 const SUPPORTED_IMAGES = new Set(['png', 'jpg', 'jpeg', 'webp']);
@@ -57,11 +62,12 @@ function FileTypeIcon({ type, className = '' }: { type: string; className?: stri
   );
 }
 
-export default function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
+export default function FileViewer({ file, isOpen, onClose, milestones, collaborators }: FileViewerProps) {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(false);
+  const [comparePair, setComparePair] = useState<{ from: FileVersion; to: FileVersion } | null>(null);
 
   const user = useAuthStore((state) => state.user);
   const currentUserId = user?.id || 0;
@@ -100,6 +106,14 @@ export default function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
         <div className="flex items-center gap-3 text-sm text-gray-500">
           <Badge variant="info">{file.file_type.toUpperCase()}</Badge>
           <span>{formatBytes(file.file_size)}</span>
+          {file.current_version && (
+            <Badge variant={file.current_version.visibility === 'client_issued' ? 'success' : 'default'}>
+              v{file.current_version.version_number} · {file.current_version.visibility.replace(/_/g, ' ')}
+            </Badge>
+          )}
+          <span className="text-gray-400">
+            {file.version_count} revision{file.version_count === 1 ? '' : 's'}
+          </span>
         </div>
 
         <div className="flex items-center justify-center min-h-[300px] max-h-[70vh] overflow-auto bg-gray-50 border border-border">
@@ -192,6 +206,26 @@ export default function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
           </button>
         </div>
 
+        {/* Revision history (T1/T2/T7/T8) */}
+        <RevisionPanel
+          file={file}
+          isArchitect={isArchitect}
+          milestones={milestones}
+          onOpenCompare={(from, to) => setComparePair({ from, to })}
+        />
+
+        {/* Review workflow (T3) — internal team */}
+        {isArchitect && (
+          <div className="border-t border-border pt-3">
+            <ReviewPanel
+              fileId={file.id}
+              projectId={file.project_id}
+              collaborators={collaborators ?? []}
+            />
+          </div>
+        )}
+
+        {/* Comments with revision scope (T1) */}
         <div className="border-t border-border pt-3">
           <button
             onClick={() => setShowComments(!showComments)}
@@ -214,11 +248,21 @@ export default function FileViewer({ file, isOpen, onClose }: FileViewerProps) {
                 projectId={file.project_id}
                 currentUserId={currentUserId}
                 isArchitect={isArchitect}
+                versionId={file.current_version?.id ?? null}
               />
             </div>
           )}
         </div>
       </div>
+
+      {comparePair && (
+        <CompareModal
+          file={file}
+          from={comparePair.from}
+          to={comparePair.to}
+          onClose={() => setComparePair(null)}
+        />
+      )}
     </Modal>
   );
 }

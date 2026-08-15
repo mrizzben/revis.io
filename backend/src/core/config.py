@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     S3_BUCKET: str = "revis.io"
     S3_REGION: str = "us-east-1"
 
+    # Malware scanning (T8) — clamd over TCP; empty host disables scanning.
+    CLAMD_HOST: str = ""
+    CLAMD_PORT: int = 3310
+    # Largest object scanned synchronously at upload-complete; larger objects
+    # are marked `skipped` and must be scanned out-of-band before client issue.
+    MALWARE_SCAN_MAX_SIZE: int = 524_288_000  # 500 MB
+    # Abandoned multipart uploads older than this are aborted by maintenance.
+    MULTIPART_ABANDON_AFTER_SECONDS: int = 7 * 24 * 3600
+    # Soft-deleted design items are hard-deleted after this retention window.
+    SOFT_DELETE_RETENTION_SECONDS: int = 30 * 24 * 3600
+
     # Email
     RESEND_API_KEY: str = ""
     EMAIL_FROM: str = "noreply@revis.io.dev"

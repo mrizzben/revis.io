@@ -1,10 +1,10 @@
 """Milestone CRUD service with WebSocket broadcasting."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.file import DesignFile
@@ -19,17 +19,12 @@ logger = logging.getLogger(__name__)
 
 
 class MilestoneService:
-
     @staticmethod
-    async def _validate_architect_access(
-        db: AsyncSession, project_id: int, user: User
-    ) -> Project:
+    async def _validate_architect_access(db: AsyncSession, project_id: int, user: User) -> Project:
         result = await db.execute(select(Project).where(Project.id == project_id))
         project = result.scalar_one_or_none()
         if not project:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
         if project.owner_id == user.id:
             return project
@@ -52,9 +47,7 @@ class MilestoneService:
     async def create_milestone(
         db: AsyncSession, project_id: int, data: MilestoneCreate, user: User
     ) -> Milestone:
-        project = await MilestoneService._validate_architect_access(
-            db, project_id, user
-        )
+        project = await MilestoneService._validate_architect_access(db, project_id, user)
 
         if data.position is None:
             max_result = await db.execute(
@@ -62,7 +55,7 @@ class MilestoneService:
                     Milestone.project_id == project_id
                 )
             )
-            position = max_result.scalar() + 1
+            position = (max_result.scalar() or 0) + 1
         else:
             position = data.position
 
@@ -78,7 +71,7 @@ class MilestoneService:
 
         logger.info(
             "Milestone created",
-            extra={"milestone_id": milestone.id, "project_id": project_id, "name": milestone.name},
+            extra={"milestone_id": milestone.id, "project_id": project_id},
         )
 
         try:
@@ -98,13 +91,9 @@ class MilestoneService:
         return milestone
 
     @staticmethod
-    async def list_milestones(
-        db: AsyncSession, project_id: int
-    ) -> list[Milestone]:
+    async def list_milestones(db: AsyncSession, project_id: int) -> list[Milestone]:
         stmt = (
-            select(Milestone)
-            .where(Milestone.project_id == project_id)
-            .order_by(Milestone.position)
+            select(Milestone).where(Milestone.project_id == project_id).order_by(Milestone.position)
         )
         result = await db.execute(stmt)
         milestones = list(result.scalars().all())
@@ -124,12 +113,8 @@ class MilestoneService:
         return milestones
 
     @staticmethod
-    async def get_milestone(
-        db: AsyncSession, milestone_id: int
-    ) -> Milestone:
-        result = await db.execute(
-            select(Milestone).where(Milestone.id == milestone_id)
-        )
+    async def get_milestone(db: AsyncSession, milestone_id: int) -> Milestone:
+        result = await db.execute(select(Milestone).where(Milestone.id == milestone_id))
         milestone = result.scalar_one_or_none()
         if not milestone:
             raise HTTPException(
@@ -146,9 +131,7 @@ class MilestoneService:
         user: User,
     ) -> Milestone:
         milestone = await MilestoneService.get_milestone(db, milestone_id)
-        await MilestoneService._validate_architect_access(
-            db, milestone.project_id, user
-        )
+        await MilestoneService._validate_architect_access(db, milestone.project_id, user)
 
         was_completed = milestone.is_completed
         is_completing = False
@@ -156,29 +139,25 @@ class MilestoneService:
         if data.name is not None:
             milestone.name = data.name.strip()
         if data.description is not None:
-            milestone.description = (
-                data.description.strip() if data.description else None
-            )
+            milestone.description = data.description.strip() if data.description else None
         if data.position is not None:
             milestone.position = data.position
         if data.is_completed is not None:
             if data.is_completed and not was_completed:
                 milestone.is_completed = True
-                milestone.completed_at = datetime.now(timezone.utc)
+                milestone.completed_at = datetime.now(UTC)
                 is_completing = True
             elif not data.is_completed and was_completed:
                 milestone.is_completed = False
                 milestone.completed_at = None
 
-        milestone.updated_at = datetime.now(timezone.utc)
+        milestone.updated_at = datetime.now(UTC)
         await db.commit()
         await db.refresh(milestone)
 
         try:
             ws = get_manager()
-            event_type = (
-                "milestone_completed" if is_completing else "milestone_updated"
-            )
+            event_type = "milestone_completed" if is_completing else "milestone_updated"
             await ws.broadcast_to_project(
                 milestone.project_id,
                 {
@@ -192,23 +171,17 @@ class MilestoneService:
             pass
 
         if is_completing:
-            await send_milestone_completed_notification(
-                db, milestone.project_id, milestone.name
-            )
+            await send_milestone_completed_notification(db, milestone.project_id, milestone.name)
             logger.info(
                 "Milestone completed",
-                extra={"milestone_id": milestone.id, "project_id": milestone.project_id, "name": milestone.name},
+                extra={"milestone_id": milestone.id, "project_id": milestone.project_id},
             )
 
         return milestone
 
     @staticmethod
-    async def delete_milestone(
-        db: AsyncSession, milestone_id: int, user: User
-    ) -> None:
+    async def delete_milestone(db: AsyncSession, milestone_id: int, user: User) -> None:
         milestone = await MilestoneService.get_milestone(db, milestone_id)
-        await MilestoneService._validate_architect_access(
-            db, milestone.project_id, user
-        )
+        await MilestoneService._validate_architect_access(db, milestone.project_id, user)
         await db.delete(milestone)
         await db.commit()

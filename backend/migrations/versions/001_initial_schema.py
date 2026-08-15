@@ -4,23 +4,27 @@ Revision ID: 001
 Revises:
 Create Date: 2026-05-10
 """
-from typing import Sequence, Union
+
+from collections.abc import Sequence
 
 from alembic import op
-import sqlalchemy as sa
-
 
 revision: str = "001"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Create enum types
-    op.execute("CREATE TYPE IF NOT EXISTS user_role AS ENUM ('architect', 'client')")
-    op.execute("CREATE TYPE IF NOT EXISTS thumbnail_status AS ENUM ('pending', 'processing', 'complete', 'failed', 'unsupported')")
-    op.execute("CREATE TYPE IF NOT EXISTS notification_type AS ENUM ('file_uploaded', 'milestone_completed', 'comment_replied', 'invitation_received')")
+    # Create enum types (PG has no CREATE TYPE IF NOT EXISTS; alembic's
+    # version table guarantees each migration runs exactly once)
+    op.execute("CREATE TYPE user_role AS ENUM ('architect', 'client')")
+    op.execute(
+        "CREATE TYPE thumbnail_status AS ENUM ('pending', 'processing', 'complete', 'failed', 'unsupported')"
+    )
+    op.execute(
+        "CREATE TYPE notification_type AS ENUM ('file_uploaded', 'milestone_completed', 'comment_replied', 'invitation_received')"
+    )
 
     # Create tables using raw SQL
     op.execute("""
@@ -111,7 +115,9 @@ def upgrade() -> None:
             FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
         )
     """)
-    op.execute("CREATE INDEX IF NOT EXISTS idx_milestones_project ON milestones(project_id, position)")
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_milestones_project ON milestones(project_id, position)"
+    )
 
     op.execute("""
         CREATE TABLE IF NOT EXISTS design_files (
@@ -137,9 +143,15 @@ def upgrade() -> None:
             FOREIGN KEY (uploaded_by_id) REFERENCES users(id)
         )
     """)
-    op.execute("CREATE INDEX IF NOT EXISTS idx_design_files_project ON design_files(project_id, is_deleted)")
-    op.execute("CREATE INDEX IF NOT EXISTS idx_design_files_milestone ON design_files(milestone_id)")
-    op.execute("CREATE INDEX IF NOT EXISTS idx_design_files_thumbnail ON design_files(thumbnail_status)")
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_design_files_project ON design_files(project_id, is_deleted)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_design_files_milestone ON design_files(milestone_id)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_design_files_thumbnail ON design_files(thumbnail_status)"
+    )
 
     op.execute("""
         CREATE TABLE IF NOT EXISTS file_versions (
@@ -214,7 +226,9 @@ def upgrade() -> None:
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
-    op.execute("CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read)")
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read)"
+    )
 
 
 def downgrade() -> None:

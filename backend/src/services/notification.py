@@ -1,7 +1,6 @@
 """Notification service: email (Resend) and in-app notifications."""
 
 from dataclasses import dataclass
-from typing import Any
 
 import resend
 from sqlalchemy import select
@@ -376,5 +375,47 @@ async def send_file_upload_notifications(
             ntype=NotificationType.file_uploaded,
             title=f"New file uploaded to {project_name}",
             body=f"{uploader_name} uploaded {file_name}",
+            reference_id=project_id,
+        )
+
+
+async def send_revision_issued_notifications(
+    db: AsyncSession,
+    project_id: int,
+    file_name: str,
+    version_number: int,
+    issuer_name: str,
+) -> None:
+    """Notify client members when a revision is explicitly issued (T2/T7).
+
+    Issuing is the only upload-adjacent action that reaches clients — uploads
+    themselves are internal until issued.
+    """
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        return
+
+    project_name = project.name
+    members_result = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.role == "client",
+        )
+    )
+    members = members_result.scalars().all()
+
+    for member in members:
+        user_result = await db.execute(select(User).where(User.id == member.user_id))
+        user = user_result.scalar_one_or_none()
+        if not user:
+            continue
+
+        await create_notification(
+            db=db,
+            user_id=user.id,
+            ntype=NotificationType.revision_issued,
+            title=f"New revision issued: {file_name} (v{version_number})",
+            body=f"{issuer_name} issued revision {version_number} of {file_name} to {project_name}",
             reference_id=project_id,
         )

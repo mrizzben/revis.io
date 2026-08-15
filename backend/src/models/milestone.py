@@ -1,9 +1,16 @@
 """Milestone SQLAlchemy model."""
 
+from datetime import datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
+
+if TYPE_CHECKING:
+    from src.models.file import DesignFile
+    from src.models.project import Project
 
 
 class Milestone(Base):
@@ -17,11 +24,13 @@ class Milestone(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    completed_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[DateTime] = mapped_column(
+    # Computed per-project count set transiently by the service layer, not a column.
+    file_count: int = 0
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    updated_at: Mapped[DateTime] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 

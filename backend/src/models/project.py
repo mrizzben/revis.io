@@ -1,10 +1,17 @@
 """Project, ProjectMember, and Invitation SQLAlchemy models."""
 
+from datetime import datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
-from src.models.user import User, Firm
+from src.models.user import Firm, User
+
+if TYPE_CHECKING:
+    from src.models.file import DesignFile
+    from src.models.milestone import Milestone
 
 
 class Project(Base):
@@ -20,10 +27,10 @@ class Project(Base):
         Integer, ForeignKey("firms.id", ondelete="SET NULL"), nullable=True
     )
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[DateTime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    updated_at: Mapped[DateTime] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -54,7 +61,7 @@ class ProjectMember(Base):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="client")
-    joined_at: Mapped[DateTime] = mapped_column(
+    joined_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -68,20 +75,14 @@ class Invitation(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    token: Mapped[str] = mapped_column(
-        String(64), unique=True, nullable=False, index=True
-    )
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     project_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
-    invited_by_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    invited_by_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    expires_at: Mapped[DateTime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    created_at: Mapped[DateTime] = mapped_column(
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 

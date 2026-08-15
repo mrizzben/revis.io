@@ -14,6 +14,11 @@ class NotificationType(str, enum.Enum):
     milestone_completed = "milestone_completed"
     comment_replied = "comment_replied"
     invitation_received = "invitation_received"
+    mention = "mention"
+    todo_assigned = "todo_assigned"
+    review_requested = "review_requested"
+    review_updated = "review_updated"
+    revision_issued = "revision_issued"
 
 
 class Notification(Base):

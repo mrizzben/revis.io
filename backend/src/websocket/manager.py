@@ -66,17 +66,18 @@ class ProjectRoomManager:
     async def _send_to_local(self, project_id: int, message: dict) -> None:
         users = self._connections.get(project_id, {})
         exclude = message.pop("_exclude_user_id", None)
+        allow = message.pop("_allow_user_ids", None)
         for user_id, ws in list(users.items()):
             if exclude is not None and user_id == exclude:
+                continue
+            if allow is not None and user_id not in allow:
                 continue
             try:
                 await ws.send_json(message)
             except Exception:
                 await self.disconnect(project_id, user_id)
 
-    async def connect(
-        self, project_id: int, user_id: int, websocket: WebSocket
-    ) -> None:
+    async def connect(self, project_id: int, user_id: int, websocket: WebSocket) -> None:
         await websocket.accept()
         if project_id not in self._connections:
             self._connections[project_id] = {}
@@ -97,6 +98,7 @@ class ProjectRoomManager:
     async def broadcast_to_project(
         self, project_id: int, message: dict, exclude_user_id: int | None = None
     ) -> None:
+        """Broadcast to every connected user in the project room (all roles)."""
         redis = await self._get_redis()
         payload = dict(message)
         if exclude_user_id is not None:
@@ -104,9 +106,27 @@ class ProjectRoomManager:
         channel = f"project:{project_id}"
         await redis.publish(channel, json.dumps(payload))
 
-    async def send_to_user(
-        self, project_id: int, user_id: int, message: dict
+    async def broadcast_to_project_team(
+        self,
+        project_id: int,
+        message: dict,
+        team_user_ids: list[int],
+        exclude_user_id: int | None = None,
     ) -> None:
+        """Broadcast to a restricted set of users in the project room.
+
+        Internal collaboration events must never reach client-role connections,
+        so the payload carries the allowlist and the local dispatcher filters it.
+        """
+        redis = await self._get_redis()
+        payload = dict(message)
+        payload["_allow_user_ids"] = team_user_ids
+        if exclude_user_id is not None:
+            payload["_exclude_user_id"] = exclude_user_id
+        channel = f"project:{project_id}"
+        await redis.publish(channel, json.dumps(payload))
+
+    async def send_to_user(self, project_id: int, user_id: int, message: dict) -> None:
         room = self._connections.get(project_id, {})
         ws = room.get(user_id)
         if ws:
@@ -120,9 +140,7 @@ class ProjectRoomManager:
         return list(room.keys())
 
 
-async def verify_project_access(
-    db: AsyncSession, project_id: int, user_id: int
-) -> bool:
+async def verify_project_access(db: AsyncSession, project_id: int, user_id: int) -> bool:
     """Check if a user has access to a project (owner or member, not archived)."""
     result = await db.execute(
         select(Project).where(
@@ -159,7 +177,5 @@ async def get_user_from_payload(db: AsyncSession, payload: dict) -> User | None:
     user_id = payload.get("sub")
     if user_id is None:
         return None
-    result = await db.execute(
-        select(User).where(User.id == int(user_id), User.is_active.is_(True))
-    )
+    result = await db.execute(select(User).where(User.id == int(user_id), User.is_active.is_(True)))
     return result.scalar_one_or_none()

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useAuthStore from '../stores/authStore';
 import useWebSocket from '../hooks/useWebSocket';
@@ -14,7 +13,6 @@ import type { CreateProjectRequest } from '../types';
 export default function Dashboard() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
@@ -41,6 +39,14 @@ export default function Dashboard() {
     e.preventDefault();
     createMutation.mutate({ name: newProjectName, description: newProjectDesc || undefined });
   };
+
+  const createError = createMutation.isError
+    ? (() => {
+        const err = createMutation.error as { response?: { data?: { detail?: unknown } } };
+        const detail = err?.response?.data?.detail;
+        return typeof detail === 'string' ? detail : 'Failed to create project. Please try again.';
+      })()
+    : null;
 
   const stats = {
     total: projects?.length || 0,
@@ -96,7 +102,9 @@ export default function Dashboard() {
             )}
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            {user?.role === 'architect' ? 'Manage your design projects' : 'View your design projects'}
+            {user?.role === 'architect'
+              ? 'Manage your design projects'
+              : 'View your design projects'}
           </p>
         </div>
         {user?.role === 'architect' && (
@@ -106,7 +114,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
         <div className="border border-border bg-white p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Projects</p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Total Projects
+          </p>
           <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
         </div>
         <div className="border border-border bg-white p-5">
@@ -127,9 +137,18 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="border border-border bg-white py-12 px-6 text-center">
-          <svg className="w-10 h-10 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          <svg
+            className="w-10 h-10 text-gray-300 mx-auto mb-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+            />
           </svg>
           <p className="text-gray-900 font-medium mb-1">No projects yet</p>
           {user?.role === 'architect' ? (
@@ -138,13 +157,20 @@ export default function Dashboard() {
               <Button onClick={() => setIsCreateOpen(true)}>Create Project</Button>
             </>
           ) : (
-            <p className="text-gray-500 text-sm">You haven&apos;t been invited to any projects yet.</p>
+            <p className="text-gray-500 text-sm">
+              You haven&apos;t been invited to any projects yet.
+            </p>
           )}
         </div>
       )}
 
       <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="New Project">
         <form onSubmit={handleCreateProject} className="space-y-4">
+          {createError && (
+            <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">
+              {createError}
+            </div>
+          )}
           <Input
             label="Project Name"
             type="text"

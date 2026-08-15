@@ -35,9 +35,8 @@ export default function Register() {
       if (role === 'architect') {
         try {
           const tokens = await authApi.login(email, password);
-          storeLogin(tokens.access_token, null);
           const user = await apiClient.get('/users/me', {
-            headers: { Authorization: `Bearer ${tokens.access_token}` }
+            headers: { Authorization: `Bearer ${tokens.access_token}` },
           });
           storeLogin(tokens.access_token, user.data);
           navigate('/dashboard', { replace: true });
@@ -48,8 +47,17 @@ export default function Register() {
         navigate('/login', { replace: true });
       }
     } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : 'Registration failed');
+      const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data
+        ?.detail;
+      if (typeof detail === 'string') {
+        setError(detail);
+      } else if (detail && typeof detail === 'object' && Array.isArray(detail)) {
+        setError(detail.map((d) => (d?.msg ? d.msg : 'Invalid input')).join('; '));
+      } else if ((err as { response?: unknown })?.response) {
+        setError('Registration failed');
+      } else {
+        setError('Cannot reach the server. Is the backend running?');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -60,9 +68,18 @@ export default function Register() {
       <div className="max-w-sm w-full">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <svg className="w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            <svg
+              className="w-8 h-8 text-primary-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+              />
             </svg>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Revis.io</h1>
           </div>
@@ -72,7 +89,9 @@ export default function Register() {
         <div className="border border-border bg-white p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
+              <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">
+                {error}
+              </div>
             )}
 
             <div>

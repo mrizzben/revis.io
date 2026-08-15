@@ -3,8 +3,9 @@ import TextArea from '../ui/TextArea';
 import Button from '../ui/Button';
 
 interface CommentFormProps {
-  onSubmit: (body: string, parentId?: number) => Promise<void>;
+  onSubmit: (body: string, parentId?: number, versionId?: number | null) => Promise<void>;
   parentId?: number;
+  versionId?: number | null;
   onCancel?: () => void;
   isLoading?: boolean;
   placeholder?: string;
@@ -14,6 +15,7 @@ interface CommentFormProps {
 export default function CommentForm({
   onSubmit,
   parentId,
+  versionId,
   onCancel,
   isLoading,
   placeholder,
@@ -39,7 +41,7 @@ export default function CommentForm({
     }
     setError('');
     try {
-      await onSubmit(trimmed, parentId);
+      await onSubmit(trimmed, parentId, versionId);
       setBody('');
     } catch {
       setError('Failed to submit comment. Please try again.');

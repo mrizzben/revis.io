@@ -10,6 +10,8 @@ interface CommentThreadProps {
   projectId: number;
   currentUserId: number;
   isArchitect?: boolean;
+  // Scope comments to a specific revision (T1); omit for all-revision comments.
+  versionId?: number | null;
 }
 
 export default function CommentThread({
@@ -17,6 +19,7 @@ export default function CommentThread({
   projectId: _projectId,
   currentUserId,
   isArchitect = false,
+  versionId = null,
 }: CommentThreadProps) {
   const queryClient = useQueryClient();
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
@@ -42,7 +45,7 @@ export default function CommentThread({
   const handleCreate = async (body: string, parentId?: number) => {
     setSubmitting(true);
     try {
-      await createComment(fileId, { body, parent_id: parentId });
+      await createComment(fileId, { body, parent_id: parentId, version_id: versionId });
       setReplyingTo(null);
       invalidate();
     } finally {

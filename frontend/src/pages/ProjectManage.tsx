@@ -17,6 +17,9 @@ import FileUploader from '../components/file/FileUploader';
 import FileList from '../components/file/FileList';
 import InviteForm from '../components/project/InviteForm';
 import Skeleton from '../components/ui/Skeleton';
+import OptionsPanel from '../components/options/OptionsPanel';
+import ActivityTimeline from '../components/activity/ActivityTimeline';
+import { listCollaborators } from '../api/endpoints/collaborators';
 import type { Milestone } from '../types';
 
 export default function ProjectManage() {
@@ -35,6 +38,16 @@ export default function ProjectManage() {
   const { data: milestones = [] } = useQuery({
     queryKey: ['milestones', projectIdNum],
     queryFn: () => listMilestones(projectIdNum),
+    enabled: !!projectIdNum,
+  });
+
+  const { data: collaborators = [] } = useQuery({
+    queryKey: ['collaborators', projectIdNum],
+    queryFn: async () => {
+      const resp = await listCollaborators(projectIdNum);
+      const owner = resp.owner ? [{ id: resp.owner.user_id, name: resp.owner.name }] : [];
+      return [...owner, ...resp.collaborators.map((c) => ({ id: c.user_id, name: c.name }))];
+    },
     enabled: !!projectIdNum,
   });
 
@@ -252,13 +265,19 @@ export default function ProjectManage() {
               files={project.files}
               onFileDeleted={handleUploadSuccess}
               projectId={projectIdNum}
+              milestones={milestones}
+              collaborators={collaborators}
             />
           </div>
+
+          {/* Design options (T5) */}
+          <OptionsPanel projectId={projectIdNum} isOwner files={project.files ?? []} />
         </div>
 
-        {/* Sidebar: Invite */}
-        <div>
+        {/* Sidebar: Invite + Activity */}
+        <div className="space-y-6">
           <InviteForm projectId={projectIdNum} />
+          <ActivityTimeline projectId={projectIdNum} />
         </div>
       </div>
     </div>

@@ -108,6 +108,23 @@ export default function useWebSocket(projectId: number | null): UseWebSocketRetu
           case 'file_deleted':
             queryClient.invalidateQueries({ queryKey: ['files', projectId] });
             break;
+          case 'revision_created':
+          case 'revision_restored':
+          case 'revision_issued':
+            queryClient.invalidateQueries({ queryKey: ['files', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['activity', projectId] });
+            if (data.file_id) {
+              queryClient.invalidateQueries({ queryKey: ['versions', data.file_id] });
+            }
+            break;
+          case 'review_requested':
+          case 'review_updated':
+            queryClient.invalidateQueries({ queryKey: ['activity', projectId] });
+            if (data.file_id) {
+              queryClient.invalidateQueries({ queryKey: ['reviews', data.file_id] });
+            }
+            break;
           case 'file_updated':
             queryClient.invalidateQueries({ queryKey: ['files', projectId] });
             queryClient.invalidateQueries({ queryKey: ['project', projectId] });
@@ -123,6 +140,18 @@ export default function useWebSocket(projectId: number | null): UseWebSocketRetu
               queryClient.invalidateQueries({ queryKey: ['comments', data.file_id] });
             }
             pushNotification('comment_added', 'New comment', 'A new comment was added');
+            break;
+          case 'internal_note_added':
+            queryClient.invalidateQueries({ queryKey: ['internal-notes', projectId] });
+            pushNotification('mention', 'Internal note', 'A teammate added an internal note');
+            break;
+          case 'todo_added':
+          case 'todo_updated':
+          case 'todo_deleted':
+            queryClient.invalidateQueries({ queryKey: ['todos', projectId] });
+            if (data.type !== 'todo_deleted') {
+              pushNotification('todo_assigned', 'To-do updated', 'A teammate updated a to-do');
+            }
             break;
           case 'ping':
             ws.send(JSON.stringify({ type: 'pong' }));
@@ -150,7 +179,7 @@ export default function useWebSocket(projectId: number | null): UseWebSocketRetu
         }, ERROR_DEBOUNCE);
       }
     };
-  }, [projectId, accessToken, queryClient, clearPolling, startPolling]);
+  }, [projectId, accessToken, queryClient, clearPolling, startPolling, pushNotification]);
 
   useEffect(() => {
     if (!projectId) {

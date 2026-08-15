@@ -2,7 +2,15 @@ import { create } from 'zustand';
 
 export interface Toast {
   id: string;
-  type: 'file_uploaded' | 'file_deleted' | 'file_updated' | 'milestone_updated' | 'comment_added' | 'error';
+  type:
+    | 'file_uploaded'
+    | 'file_deleted'
+    | 'file_updated'
+    | 'milestone_updated'
+    | 'comment_added'
+    | 'mention'
+    | 'todo_assigned'
+    | 'error';
   title: string;
   message: string;
   timestamp: number;

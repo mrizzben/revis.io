@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
 from src.core.security import decode_token
+from src.models.project import Project
+from src.models.user import User
 
 security_scheme = HTTPBearer(auto_error=False)
 
@@ -90,6 +92,7 @@ def require_role(*allowed_roles: str):
         async def admin_route(user = Depends(require_role("architect"))):
             ...
     """
+
     async def role_checker(
         current_user=Depends(get_current_user),
     ):
@@ -105,3 +108,81 @@ def require_role(*allowed_roles: str):
 
 # Common dependency aliases
 RequireArchitect = Annotated[None, Depends(require_role("architect"))]
+
+
+async def get_project_for_internal(
+    project_id: int,
+    db: DBSession,
+    current_user: User = Depends(get_current_user),
+):
+    """Resolve a project and verify the user has internal (owner|collaborator) access.
+
+    Returns the project; raises 404 for non-internal users (incl. clients) to avoid
+    disclosing internal content to external parties.
+    """
+    from sqlalchemy import select
+
+    from src.models.project import Project, ProjectMember
+
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    if project.owner_id == current_user.id:
+        return project
+
+    member_result = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == current_user.id,
+        )
+    )
+    member = member_result.scalar_one_or_none()
+    if member is None or member.role != "collaborator":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    return project
+
+
+async def get_project_for_owner(
+    project_id: int,
+    db: DBSession,
+    current_user: User = Depends(get_current_user),
+):
+    """Resolve a project and verify the user is its owner (full internal control).
+
+    Non-internal users (incl. clients) receive 404 to avoid disclosing the
+    project; internal collaborators receive 403 (owner-only action).
+    """
+    from sqlalchemy import select
+
+    from src.models.project import Project, ProjectMember
+
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    if project.owner_id == current_user.id:
+        return project
+
+    member_result = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == current_user.id,
+        )
+    )
+    member = member_result.scalar_one_or_none()
+    if member is None or member.role != "collaborator":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Only the project owner can perform this action",
+    )
+
+
+# Type aliases for internal-access dependencies
+RequireProjectOwner = Annotated[Project, Depends(get_project_for_owner)]
+RequireInternalProject = Annotated[Project, Depends(get_project_for_internal)]
