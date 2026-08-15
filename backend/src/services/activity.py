@@ -5,7 +5,6 @@ rows; timeline reads apply the same visibility rules as the underlying
 entities (client timelines only see events recorded with visibility="client").
 """
 
-import json
 import logging
 from typing import Any
 
@@ -36,7 +35,7 @@ async def record_event(
         event_type=event_type,
         entity_type=entity_type,
         entity_id=str(entity_id) if entity_id is not None else None,
-        payload=json.dumps(payload or {}),
+        payload=payload or {},
         visibility=visibility,
     )
     db.add(event)
@@ -46,11 +45,7 @@ async def record_event(
 
 
 def _serialize_event(event: ActivityEvent, actor: User | None) -> dict[str, Any]:
-    payload = {}
-    try:
-        payload = json.loads(event.payload) if event.payload else {}
-    except (TypeError, json.JSONDecodeError):
-        payload = {}
+    payload = event.payload if isinstance(event.payload, dict) else {}
     return {
         "id": event.id,
         "project_id": event.project_id,
@@ -101,9 +96,7 @@ async def list_events(
     actor_ids = {e.actor_id for e in events}
     actors: dict[int, User] = {}
     if actor_ids:
-        actor_result = await db.execute(
-            select(UserModel).where(UserModel.id.in_(actor_ids))
-        )
+        actor_result = await db.execute(select(UserModel).where(UserModel.id.in_(actor_ids)))
         actors = {u.id: u for u in actor_result.scalars().all()}
 
     return [_serialize_event(e, actors.get(e.actor_id)) for e in events]
@@ -134,6 +127,4 @@ async def ensure_activity_access(
         )
     )
     if member_result.scalar_one_or_none() is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")

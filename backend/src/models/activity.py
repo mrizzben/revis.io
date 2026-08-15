@@ -1,11 +1,16 @@
 """ActivityEvent model — append-only project audit history (T6)."""
 
 from datetime import datetime
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
+
+if TYPE_CHECKING:
+    from src.models.project import Project
+    from src.models.user import User
 
 
 class ActivityEvent(Base):
@@ -15,14 +20,12 @@ class ActivityEvent(Base):
     project_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
-    actor_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    actor_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     entity_type: Mapped[str] = mapped_column(String(64), nullable=False)
     entity_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # JSON-encoded payload (JSONB in Postgres). SQLite-safe as Text.
-    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    # JSON payload — JSONB in Postgres, TEXT in SQLite (generic JSON type).
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     # 'internal' events never reach client timelines; 'client' events may.
     visibility: Mapped[str] = mapped_column(String(20), nullable=False, default="internal")
     created_at: Mapped[datetime] = mapped_column(
