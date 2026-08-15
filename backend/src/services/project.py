@@ -1,12 +1,11 @@
 """Project, Firm, and Invitation services."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from src.core.security import create_url_safe_token
 from src.models.file import DesignFile
@@ -21,6 +20,7 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════
 # Project Service (T027)
 # ═══════════════════════════════════════════════════════════
+
 
 async def create_project(
     db: AsyncSession,
@@ -55,7 +55,11 @@ async def create_project(
     await db.refresh(project)
     logger.info(
         "Project created",
-        extra={"project_id": project.id, "name": name, "owner_id": user.id, "firm_id": project.firm_id},
+        extra={
+            "project_id": project.id,
+            "owner_id": user.id,
+            "firm_id": project.firm_id,
+        },
     )
     return project
 
@@ -141,7 +145,7 @@ async def update_project(
     if is_archived is not None:
         project.is_archived = is_archived
 
-    project.updated_at = datetime.now(timezone.utc)
+    project.updated_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(project)
     return project
@@ -159,11 +163,11 @@ async def delete_project(
     if archive_only:
         project.is_archived = True
         await db.commit()
-        logger.info("Project archived", extra={"project_id": project_id, "name": project.name})
+        logger.info("Project archived", extra={"project_id": project_id})
     else:
         await db.delete(project)
         await db.commit()
-        logger.info("Project deleted", extra={"project_id": project_id, "name": project.name})
+        logger.info("Project deleted", extra={"project_id": project_id})
 
 
 async def _get_project_with_access(
@@ -180,7 +184,10 @@ async def _get_project_with_access(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     if require_owner and project.owner_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the project owner can perform this action")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the project owner can perform this action",
+        )
 
     if user.role == UserRole.client:
         member_result = await db.execute(
@@ -197,7 +204,9 @@ async def _get_project_with_access(
 
 async def _count_files(db: AsyncSession, project_id: int) -> int:
     result = await db.execute(
-        select(func.count()).select_from(DesignFile).where(
+        select(func.count())
+        .select_from(DesignFile)
+        .where(
             DesignFile.project_id == project_id,
             DesignFile.is_deleted.is_(False),
         )
@@ -207,7 +216,9 @@ async def _count_files(db: AsyncSession, project_id: int) -> int:
 
 async def _count_milestones(db: AsyncSession, project_id: int) -> int:
     result = await db.execute(
-        select(func.count()).select_from(Milestone).where(
+        select(func.count())
+        .select_from(Milestone)
+        .where(
             Milestone.project_id == project_id,
         )
     )
@@ -216,7 +227,9 @@ async def _count_milestones(db: AsyncSession, project_id: int) -> int:
 
 async def _count_completed_milestones(db: AsyncSession, project_id: int) -> int:
     result = await db.execute(
-        select(func.count()).select_from(Milestone).where(
+        select(func.count())
+        .select_from(Milestone)
+        .where(
             Milestone.project_id == project_id,
             Milestone.is_completed.is_(True),
         )
@@ -227,6 +240,7 @@ async def _count_completed_milestones(db: AsyncSession, project_id: int) -> int:
 # ═══════════════════════════════════════════════════════════
 # Invitation Service (T029)
 # ═══════════════════════════════════════════════════════════
+
 
 async def create_invitation(
     db: AsyncSession,
@@ -276,7 +290,7 @@ async def create_invitation(
         token=token,
         project_id=project_id,
         invited_by_id=invited_by.id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        expires_at=datetime.now(UTC) + timedelta(days=7),
     )
     db.add(invitation)
     await db.commit()
@@ -297,15 +311,13 @@ async def get_invitation(
     token: str,
 ) -> dict:
     """Get invitation details (public endpoint, no auth needed)."""
-    result = await db.execute(
-        select(Invitation).where(Invitation.token == token)
-    )
+    result = await db.execute(select(Invitation).where(Invitation.token == token))
     invitation = result.scalar_one_or_none()
 
     if not invitation or invitation.is_used:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
 
-    if invitation.expires_at < datetime.now(timezone.utc):
+    if invitation.expires_at < datetime.now(UTC):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation has expired")
 
     # Get project and inviter names
@@ -325,6 +337,7 @@ async def get_invitation(
 # ═══════════════════════════════════════════════════════════
 # Firm Service (T030)
 # ═══════════════════════════════════════════════════════════
+
 
 async def create_firm(
     db: AsyncSession,
@@ -366,9 +379,7 @@ async def list_firms(
     if user.firm_id is None:
         return []
 
-    result = await db.execute(
-        select(Firm).where(Firm.id == user.firm_id)
-    )
+    result = await db.execute(select(Firm).where(Firm.id == user.firm_id))
     firms = result.scalars().all()
 
     output = []
@@ -376,12 +387,14 @@ async def list_firms(
         member_count = await db.execute(
             select(func.count()).select_from(User).where(User.firm_id == f.id)
         )
-        output.append({
-            "id": f.id,
-            "name": f.name,
-            "member_count": member_count.scalar() or 0,
-            "created_at": f.created_at,
-        })
+        output.append(
+            {
+                "id": f.id,
+                "name": f.name,
+                "member_count": member_count.scalar() or 0,
+                "created_at": f.created_at,
+            }
+        )
 
     return output
 
@@ -398,9 +411,7 @@ async def get_firm_members(
             detail="Only firm admins can view member list",
         )
 
-    result = await db.execute(
-        select(User).where(User.firm_id == firm_id, User.is_active.is_(True))
-    )
+    result = await db.execute(select(User).where(User.firm_id == firm_id, User.is_active.is_(True)))
     return list(result.scalars().all())
 
 
