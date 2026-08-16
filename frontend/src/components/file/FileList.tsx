@@ -125,7 +125,7 @@ export default function FileList({
       className="border border-border bg-white hover:border-primary-300 transition-colors cursor-pointer group"
       onClick={() => handleViewFile(file)}
     >
-      <div className="aspect-square bg-gray-100 relative border-b border-border">
+      <div className="aspect-square bg-gray-100 relative border-b border-border overflow-hidden">
         <FileThumbnail file={file} size="medium" />
       </div>
       <div className="p-3">

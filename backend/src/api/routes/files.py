@@ -1,5 +1,6 @@
 """File routes: presigned upload/download URLs, multipart, revisions (T1/T2/T4/T7)."""
 
+import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
@@ -25,6 +26,8 @@ from src.services import file as file_service
 from src.services import project as project_service
 from src.services.notification import send_revision_issued_notifications
 from src.websocket import get_manager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/files", tags=["Files"])
 
@@ -249,6 +252,20 @@ async def upload_complete(
         s3_key=key,
     )
 
+    # Trigger thumbnail (and 3D preview) generation. Best-effort: a queue
+    # outage must not fail an otherwise-successful upload.
+    from src.services.thumbnail import enqueue_preview_job, enqueue_thumbnail_job
+
+    try:
+        await enqueue_thumbnail_job(str(file.id), version.s3_key, file.file_type)
+        if file.file_type in ("ifc", "obj", "stl"):
+            await enqueue_preview_job(str(file.id), version.s3_key, file.file_type)
+    except Exception as exc:
+        logger.warning(
+            "Thumbnail enqueue failed",
+            extra={"file_id": str(file.id), "error": str(exc)},
+        )
+
     # Team-only broadcast: internal drafts must not reach clients (T7).
     team_ids = [
         m.user_id
@@ -400,6 +417,8 @@ async def get_download_url(
     file_id: str,
     db: DBSession,
     current_user: User = Depends(get_current_user),
+    return_url: bool = Query(False),
+    inline: bool = Query(False),
 ):
     """Get a presigned download URL for a file's current revision.
 
@@ -431,9 +450,11 @@ async def get_download_url(
 
     url = file_service.create_presigned_download_url(
         key=version.s3_key,
-        filename=file.filename,
+        filename=None if inline else file.filename,
         content_type=file.content_type,
     )
+    if return_url:
+        return {"url": url}
     return RedirectResponse(url=url, status_code=302)
 
 
@@ -484,8 +505,9 @@ async def get_thumbnail(
     db: DBSession,
     current_user: User = Depends(get_current_user),
     size: str = Query("small", pattern="^(small|medium)$"),
+    return_url: bool = Query(False),
 ):
-    """Get a thumbnail URL (redirect-style response)."""
+    """Get a thumbnail URL, either as JSON or a redirect for direct navigation."""
     file = await file_service.get_file(db, file_id)
     await project_service._get_project_with_access(db, file.project_id, current_user)
 
@@ -496,13 +518,25 @@ async def get_thumbnail(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not available")
 
     key = file.thumbnail_small_key if size == "small" else file.thumbnail_medium_key
-    if not key:
-        raise HTTPException(status_code=404, detail="Thumbnail not available")
-
-    url = file_service.get_thumbnail_presigned_url(key)
+    if key:
+        url = file_service.get_thumbnail_presigned_url(key)
+    elif file.file_type in {"png", "jpg", "jpeg", "webp"}:
+        # Keep image uploads previewable while the optional ARQ worker is
+        # stopped or catching up. The original image is a valid thumbnail.
+        url = file_service.create_presigned_download_url(
+            key=file.s3_key,
+            content_type=file.content_type,
+        )
+    else:
+        url = None
     if not url:
         raise HTTPException(status_code=404, detail="Thumbnail not available")
 
+    # Browsers cannot expose a cross-origin redirect target to Axios/XHR unless
+    # the object store also permits that request. Return the URL as JSON so the
+    # frontend can assign it directly to <img src>, which does not require CORS.
+    if return_url:
+        return {"url": url}
     return RedirectResponse(url=url, status_code=302)
 
 

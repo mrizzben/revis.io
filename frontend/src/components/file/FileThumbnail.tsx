@@ -8,9 +8,11 @@ interface FileThumbnailProps {
   size?: 'small' | 'medium';
 }
 
+// The parent card controls the rendered dimensions; `size` only selects the
+// backend thumbnail resolution.
 const sizeClasses: Record<'small' | 'medium', string> = {
-  small: 'w-[200px] h-[200px]',
-  medium: 'w-[600px] h-[600px]',
+  small: 'w-full h-full',
+  medium: 'w-full h-full',
 };
 
 function FilePlaceholder({ type, className = '' }: { type: string; className?: string }) {
@@ -19,26 +21,53 @@ function FilePlaceholder({ type, className = '' }: { type: string; className?: s
 
   if (isPdf) {
     return (
-      <svg className={`w-12 h-12 text-red-300 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+      <svg
+        className={`w-12 h-12 text-red-300 ${className}`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+        />
       </svg>
     );
   }
 
   if (is3D) {
     return (
-      <svg className={`w-12 h-12 text-orange-300 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-          d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+      <svg
+        className={`w-12 h-12 text-orange-300 ${className}`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
+        />
       </svg>
     );
   }
 
   return (
-    <svg className={`w-12 h-12 text-gray-300 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    <svg
+      className={`w-12 h-12 text-gray-300 ${className}`}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+      />
     </svg>
   );
 }
@@ -47,7 +76,11 @@ export default function FileThumbnail({ file, size = 'small' }: FileThumbnailPro
   const queryClient = useQueryClient();
   const status: ThumbnailStatus = file.thumbnail_status;
 
-  const { data: thumbnailUrl, isLoading, isError } = useQuery({
+  const {
+    data: thumbnailUrl,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['thumbnail', file.id, size],
     queryFn: () => getThumbnailUrl(file.id, size),
     enabled: status === 'complete',
@@ -66,11 +99,7 @@ export default function FileThumbnail({ file, size = 'small' }: FileThumbnailPro
   if (status === 'complete' && thumbnailUrl) {
     return (
       <div className={sizeClasses[size]}>
-        <img
-          src={thumbnailUrl}
-          alt={file.filename}
-          className="w-full h-full object-cover"
-        />
+        <img src={thumbnailUrl} alt={file.filename} className="w-full h-full object-cover" />
       </div>
     );
   }

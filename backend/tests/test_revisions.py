@@ -295,6 +295,22 @@ async def test_revision_download_uses_issued_key_for_client(
     assert "v2" in r.headers["location"] or "revision.bin" in r.headers["location"]
 
 
+async def test_file_preview_returns_inline_url_without_redirect(
+    client, auth_headers, project, test_architect, seed_file, fake_s3
+):
+    file, _ = await seed_file(project.id, test_architect.id, content=b"%PDF-1.4 v1")
+
+    response = await client.get(
+        f"/api/files/{file.id}/download",
+        params={"return_url": "true", "inline": "true"},
+        headers=auth_headers,
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["url"]
+
+
 # ── T4 comparison ──────────────────────────────────────────
 
 
