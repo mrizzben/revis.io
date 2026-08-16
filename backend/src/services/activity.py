@@ -107,8 +107,24 @@ async def ensure_activity_access(
     project_id: int,
     user: User,
 ) -> None:
-    """Verify the user can view the project's activity timeline (404 for others)."""
+    """Verify the user can view the project's activity timeline (404 for others).
+
+    Handles anonymous ClientSessions (scoped to exactly one project) and the
+    admin superuser; delegates to the shared project access gate otherwise.
+    """
+    from src.api.dependencies import ClientSession
     from src.models.project import Project, ProjectMember
+
+    if isinstance(user, ClientSession):
+        from src.services.project import _get_project_with_access
+
+        await _get_project_with_access(db, project_id, user)
+        return
+    if user.role == UserRole.admin:
+        result = await db.execute(select(Project).where(Project.id == project_id))
+        if result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+        return
 
     result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalar_one_or_none()

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from src.api.dependencies import DBSession, get_current_user, require_role
+from src.api.dependencies import DBSession, get_current_participant, require_role
 from src.models.file import DesignFile
 from src.models.milestone import Milestone
 from src.models.user import User, UserRole
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 @router.get("")
 async def list_projects(
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
     archived: bool = Query(False),
 ):
     """List current user's projects."""
@@ -53,7 +53,7 @@ async def create_project(
 async def list_project_files(
     project_id: int,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
     milestone_id: int | None = Query(None),
 ):
     """List project design items with revision visibility applied per role (T7).
@@ -87,7 +87,7 @@ async def list_project_files(
 async def get_project(
     project_id: int,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     """Get project details including milestones and files."""
     project = await project_service.get_project(db, project_id, current_user)
@@ -278,7 +278,7 @@ async def invite_client(
 async def check_updates(
     project_id: int,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
     since: str = Query(None, description="ISO 8601 timestamp"),
 ):
     """Polling fallback for WebSocket: check if project has updates since timestamp."""

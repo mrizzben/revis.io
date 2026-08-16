@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, status
 
-from src.api.dependencies import DBSession, get_current_user, require_role
+from src.api.dependencies import DBSession, get_current_participant, require_role
 from src.models.user import User
 from src.schemas.milestone import MilestoneCreate, MilestoneResponse, MilestoneUpdate
 from src.services import activity
@@ -18,8 +18,11 @@ router = APIRouter(tags=["Milestones"])
 async def list_milestones(
     project_id: int,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
+    from src.services import project as project_service
+
+    await project_service._get_project_with_access(db, project_id, current_user)
     return await MilestoneService.list_milestones(db, project_id)
 
 

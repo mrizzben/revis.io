@@ -1,4 +1,8 @@
-"""JWT token creation/validation and password hashing with pwdlib (Argon2)."""
+"""JWT token creation/validation and password hashing with pwdlib (Argon2).
+
+Access tokens may carry a ``client_project_id`` claim: an anonymous client
+session granted via a project's secure link (no sign-up).
+"""
 
 from datetime import UTC, datetime, timedelta
 from typing import Any

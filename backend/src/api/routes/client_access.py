@@ -3,7 +3,8 @@
 Clients are reviewer-only: view, comment/review, approve designs. Access is
 granted per project through a secure link + password set by the project owner
 or an admin — no sign-up required (sign-up remains available for clients who
-want a persistent account).
+want a persistent account). Routes: setup/rotate/disable (owner|admin),
+public link info, and password-based session authentication.
 """
 
 from fastapi import APIRouter, Depends, status

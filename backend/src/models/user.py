@@ -10,6 +10,13 @@ from src.models.base import Base
 
 
 class UserRole(str, enum.Enum):
+    """App-level roles.
+
+    ``admin`` is the app superuser (full access to every project and
+    feature); ``architect`` signs up to create/manage projects; ``client``
+    is a reviewer-only role scoped to granted projects.
+    """
+
     admin = "admin"
     architect = "architect"
     client = "client"

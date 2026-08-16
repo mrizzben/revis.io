@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from src.api.routes import (
     activity,
     auth,
-    client_access,
+    client_access,  # client secure-link access (no sign-up)
     collaborators,
     comments,
     files,

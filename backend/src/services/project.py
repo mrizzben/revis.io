@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.api.dependencies import ClientSession
 from src.core.config import settings
 from src.core.security import create_url_safe_token, hash_password, verify_password
 from src.models.file import DesignFile, FileVersion
@@ -254,10 +255,15 @@ async def delete_project(
 async def _get_project_with_access(
     db: AsyncSession,
     project_id: int,
-    user: User,
+    user: User | ClientSession,
     require_owner: bool = False,
 ) -> Project:
-    """Get a project and verify the user has access."""
+    """Get a project and verify the user has access.
+
+    ``user`` may be a registered User (owner/architect/collaborator/client
+    member) or an anonymous ClientSession scoped to one project via the
+    client secure link.
+    """
     result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalar_one_or_none()
 

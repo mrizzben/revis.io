@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.file import DesignFile
 from src.models.milestone import Milestone
 from src.models.project import Project
-from src.models.user import User
+from src.models.user import User, UserRole
 from src.schemas.milestone import MilestoneCreate, MilestoneUpdate
 from src.services.notification import send_milestone_completed_notification
 from src.websocket import get_manager
@@ -26,7 +26,7 @@ class MilestoneService:
         if not project:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
-        if project.owner_id == user.id:
+        if project.owner_id == user.id or user.role == UserRole.admin:
             return project
 
         if user.role.value != "architect":

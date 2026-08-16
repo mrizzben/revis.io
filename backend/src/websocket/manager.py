@@ -140,8 +140,17 @@ class ProjectRoomManager:
         return list(room.keys())
 
 
-async def verify_project_access(db: AsyncSession, project_id: int, user_id: int) -> bool:
-    """Check if a user has access to a project (owner or member, not archived)."""
+async def verify_project_access(
+    db: AsyncSession,
+    project_id: int,
+    user_id: int,
+    client_project_id: int | None = None,
+) -> bool:
+    """Check if a user has access to a project (owner or member, not archived).
+
+    Anonymous client sessions pass their scoped ``client_project_id``; they
+    are granted access only while the project's client access is still enabled.
+    """
     result = await db.execute(
         select(Project).where(
             Project.id == project_id,
@@ -154,6 +163,9 @@ async def verify_project_access(db: AsyncSession, project_id: int, user_id: int)
 
     if project.owner_id == user_id:
         return True
+
+    if client_project_id is not None:
+        return client_project_id == project_id and project.client_token is not None
 
     member_result = await db.execute(
         select(ProjectMember).where(
@@ -177,5 +189,9 @@ async def get_user_from_payload(db: AsyncSession, payload: dict) -> User | None:
     user_id = payload.get("sub")
     if user_id is None:
         return None
-    result = await db.execute(select(User).where(User.id == int(user_id), User.is_active.is_(True)))
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        return None
+    result = await db.execute(select(User).where(User.id == user_id, User.is_active.is_(True)))
     return result.scalar_one_or_none()

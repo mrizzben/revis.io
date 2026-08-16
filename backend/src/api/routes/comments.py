@@ -2,9 +2,9 @@
 
 from fastapi import APIRouter, Depends, status
 
-from src.api.dependencies import DBSession, get_current_user
+from src.api.dependencies import DBSession, get_current_participant
 from src.models.user import User
-from src.schemas.comment import CommentCreate, CommentUpdate, CommentResponse
+from src.schemas.comment import CommentCreate, CommentResponse, CommentUpdate
 from src.services.comment import CommentService
 
 router = APIRouter(tags=["Comments"])
@@ -17,7 +17,7 @@ router = APIRouter(tags=["Comments"])
 async def list_comments(
     file_id: str,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     return await CommentService.list_comments(db, file_id)
 
@@ -31,9 +31,9 @@ async def create_comment(
     file_id: str,
     data: CommentCreate,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
-    return await CommentService.create_comment(db, file_id, data, current_user.id)
+    return await CommentService.create_comment(db, file_id, data, current_user)
 
 
 @router.patch(
@@ -44,7 +44,7 @@ async def update_comment(
     comment_id: int,
     data: CommentUpdate,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     return await CommentService.update_comment(db, comment_id, data, current_user.id)
 
@@ -56,6 +56,6 @@ async def update_comment(
 async def delete_comment(
     comment_id: int,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     await CommentService.delete_comment(db, comment_id, current_user.id)

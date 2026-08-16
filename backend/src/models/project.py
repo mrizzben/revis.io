@@ -58,6 +58,13 @@ class Project(Base):
 
 
 class ProjectMember(Base):
+    """Per-project membership.
+
+    ``role``: ``"client"`` (reviewer-only, default) or ``"collaborator"``
+    (internal team member added by the owner). The project owner is stored on
+    ``Project.owner_id`` and has full control incl. delete/archive.
+    """
+
     __tablename__ = "project_members"
 
     project_id: Mapped[int] = mapped_column(

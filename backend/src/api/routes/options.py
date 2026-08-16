@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from src.api.dependencies import DBSession, get_current_user
+from src.api.dependencies import DBSession, get_current_participant, get_current_user
 from src.models.design_option import DesignOption
 from src.models.file import DesignFile
 from src.models.user import User, UserRole
@@ -50,7 +50,7 @@ async def _count_files(db: DBSession, option_id: int) -> int:
 async def list_options(
     project_id: int,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     """List design options. Clients only ever see the current, non-archived option."""
     await project_service._get_project_with_access(db, project_id, current_user)
@@ -273,7 +273,7 @@ async def fork_item(
 async def list_option_files(
     option_id: int,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     """List design items in an option (role-aware)."""
     result = await db.execute(

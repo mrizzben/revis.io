@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.api.dependencies import ClientSession
 from src.models.comment import Comment
 from src.models.file import CLIENT_VISIBLE_VISIBILITIES, DesignFile, FileVersion
 from src.models.project import Project
@@ -78,7 +79,7 @@ class CommentService:
 
     @staticmethod
     async def create_comment(
-        db: AsyncSession, file_id: str, data: CommentCreate, author_id: int
+        db: AsyncSession, file_id: str, data: CommentCreate, author: User | ClientSession
     ) -> Comment:
         file_uuid = uuid.UUID(str(file_id)) if not isinstance(file_id, uuid.UUID) else file_id
         file_result = await db.execute(
@@ -91,13 +92,6 @@ class CommentService:
         if not file:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
-            )
-
-        author_result = await db.execute(select(User).where(User.id == author_id))
-        author = author_result.scalar_one_or_none()
-        if not author:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Author not found"
             )
 
         from src.services.project import _get_project_with_access
@@ -135,7 +129,7 @@ class CommentService:
 
         comment = Comment(
             file_id=file_uuid,
-            author_id=author_id,
+            author_id=author.id,
             parent_id=data.parent_id,
             version_id=data.version_id,
             body=data.body.strip(),
@@ -201,7 +195,7 @@ class CommentService:
         await activity.record_event(
             db,
             project_id=file.project_id,
-            actor_id=author_id,
+            actor_id=author.id,
             event_type="comment_created",
             entity_type="comment",
             entity_id=comment.id,
