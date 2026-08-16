@@ -1,7 +1,6 @@
 """Pydantic schemas for projects and invitations."""
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -12,8 +11,8 @@ class ProjectCreate(BaseModel):
     """Request schema for creating a project."""
 
     name: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
-    firm_id: Optional[int] = None
+    description: str | None = None
+    firm_id: int | None = None
 
     @field_validator("name", mode="after")
     @classmethod
@@ -29,9 +28,9 @@ class ProjectCreate(BaseModel):
 class ProjectUpdate(BaseModel):
     """Request schema for updating a project."""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    description: Optional[str] = None
-    is_archived: Optional[bool] = None
+    name: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = None
+    is_archived: bool | None = None
 
     @field_validator("name", mode="after")
     @classmethod
@@ -67,6 +66,21 @@ class ProjectDetailResponse(ProjectResponse):
 
     milestones: list = []  # Will be list[MilestoneResponse]
     files: list = []  # Will be list[DesignFileResponse]
+
+
+class ProjectDeleteRequest(BaseModel):
+    """Request schema for permanently deleting a project.
+
+    The user must type the project name to confirm — deletion removes all
+    objects from storage and cannot be undone.
+    """
+
+    confirmation: str = Field(..., min_length=1, max_length=255)
+
+    @field_validator("confirmation", mode="after")
+    @classmethod
+    def sanitize_confirmation(cls, v: str) -> str:
+        return sanitize_text(v) if isinstance(v, str) else v
 
 
 class InviteClientRequest(BaseModel):

@@ -16,12 +16,13 @@ export default function Dashboard() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
+  const [tab, setTab] = useState<'active' | 'archived'>('active');
 
   const { isConnected } = useWebSocket(null);
 
   const { data: projects, isLoading } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => projectsApi.listProjects(),
+    queryKey: ['projects', tab],
+    queryFn: () => projectsApi.listProjects(tab === 'archived'),
     refetchInterval: 30_000,
   });
 
@@ -115,7 +116,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
         <div className="border border-border bg-white p-5">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Total Projects
+            {tab === 'archived' ? 'Archived Projects' : 'Total Projects'}
           </p>
           <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
         </div>
@@ -127,6 +128,30 @@ export default function Dashboard() {
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Design Files</p>
           <p className="text-3xl font-bold text-primary-600 mt-1">{stats.totalFiles}</p>
         </div>
+      </div>
+
+      {/* Active / Archived switcher */}
+      <div className="flex rounded-lg border border-gray-200 overflow-hidden w-fit mb-6">
+        <button
+          onClick={() => setTab('active')}
+          className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+            tab === 'active'
+              ? 'bg-primary-500 text-white'
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          Active
+        </button>
+        <button
+          onClick={() => setTab('archived')}
+          className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+            tab === 'archived'
+              ? 'bg-primary-500 text-white'
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          Archived
+        </button>
       </div>
 
       {projects && projects.length > 0 ? (
@@ -150,9 +175,11 @@ export default function Dashboard() {
               d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
             />
           </svg>
-          <p className="text-gray-900 font-medium mb-1">No projects yet</p>
-          {user?.role === 'architect' ? (
+          {tab === 'archived' ? (
+            <p className="text-gray-900 font-medium mb-1">No archived projects</p>
+          ) : user?.role === 'architect' ? (
             <>
+              <p className="text-gray-900 font-medium mb-1">No projects yet</p>
               <p className="text-gray-500 text-sm mb-4">Create your first project to get started</p>
               <Button onClick={() => setIsCreateOpen(true)}>Create Project</Button>
             </>
