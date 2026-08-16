@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import ProjectView from './pages/ProjectView';
 import ProjectManage from './pages/ProjectManage';
 import InvitationAccept from './pages/InvitationAccept';
+import ClientAccessAccept from './pages/ClientAccessAccept';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/invitation/:token" element={<InvitationAccept />} />
+          <Route path="/client-access/:token" element={<ClientAccessAccept />} />
 
           {/* Protected routes */}
           <Route

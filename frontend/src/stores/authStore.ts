@@ -5,10 +5,11 @@ interface User {
   id: number;
   email: string;
   name: string;
-  role: 'architect' | 'client';
+  role: 'admin' | 'architect' | 'client';
   firm_id: number | null;
   is_firm_admin: boolean;
   is_verified: boolean;
+  client_project_id: number | null;  // scoped session (secure link, no sign-up)
   created_at: string;
 }
 
@@ -18,7 +19,7 @@ interface AuthState {
   isAuthenticated: boolean;
 
   // Actions
-  login: (accessToken: string, user: User) => void;
+  login: (accessToken: string, user: User | null) => void;
   logout: () => void;
   setUser: (user: User) => void;
   setAccessToken: (token: string) => void;

@@ -8,7 +8,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
-  role: 'architect' | 'client';
+  role: 'architect' | 'client' | 'admin';
   invitation_token?: string;
 }
 
@@ -31,10 +31,11 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: 'architect' | 'client';
+  role: 'admin' | 'architect' | 'client';
   firm_id: number | null;
   is_firm_admin: boolean;
   is_verified: boolean;
+  client_project_id: number | null;
   created_at: string;
 }
 
@@ -458,7 +459,31 @@ export interface WsEvent {
   todo_id?: number;
 }
 
-// ── Notification ──────────────────────────────────────────
+// ── Client Access (secure link, no sign-up) ────────────────
+export interface ClientAccessInfo {
+  project_name: string;
+  archived: boolean;
+}
+
+export interface ClientAccessAuth {
+  token: string;
+  password: string;
+}
+
+export interface ClientAccessAuthResponse {
+  access_token: string;
+  token_type: string;
+  project_id: number;
+  project_name: string;
+  expires_in: number;
+}
+
+export interface ClientAccessSetupResponse {
+  token: string;
+  url: string;
+  password_set: boolean;
+}
+
 export type NotificationType =
   | 'file_uploaded'
   | 'milestone_completed'

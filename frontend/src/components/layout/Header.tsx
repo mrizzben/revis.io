@@ -24,6 +24,9 @@ function notificationIcon(type: Notification['type']): string {
     case 'milestone_completed': return '✅';
     case 'comment_replied': return '💬';
     case 'invitation_received': return '✉️';
+    case 'mention': return '@';
+    case 'todo_assigned': return '📝';
+    default: return '🔔';
   }
 }
 
@@ -43,6 +46,7 @@ export default function Header() {
       const data = await listNotifications();
       setNotifications(data);
     } catch {
+      // silent: header badge should not fail the page
     }
   }, []);
 
@@ -190,7 +194,13 @@ export default function Header() {
                       <p className="text-sm font-medium text-gray-900">{user.name}</p>
                       <p className="text-xs text-gray-500 hidden sm:block">{user.email}</p>
                       <span className="inline-block mt-1 text-xs bg-primary-100 text-primary-700 px-2 py-0.5">
-                        {user.role}
+                        {user.role === 'admin'
+                          ? 'Admin'
+                          : user.role === 'architect'
+                            ? 'Architect'
+                            : user.client_project_id
+                              ? 'Client (Guest)'
+                              : 'Client'}
                       </span>
                     </div>
                     <button
