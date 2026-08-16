@@ -18,7 +18,7 @@ interface AuthState {
   isAuthenticated: boolean;
 
   // Actions
-  login: (accessToken: string, user: User) => void;
+  login: (accessToken: string, user: User | null) => void;
   logout: () => void;
   setUser: (user: User) => void;
   setAccessToken: (token: string) => void;

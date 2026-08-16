@@ -5,6 +5,7 @@ import AppLayout from './components/layout/AppLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import OAuthCallback from './pages/OAuthCallback';
 import Dashboard from './pages/Dashboard';
 import ProjectView from './pages/ProjectView';
 import ProjectManage from './pages/ProjectManage';
@@ -29,6 +30,7 @@ export default function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/oauth/callback" element={<OAuthCallback />} />
           <Route path="/invitation/:token" element={<InvitationAccept />} />
 
           {/* Protected routes */}
