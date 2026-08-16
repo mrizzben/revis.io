@@ -82,7 +82,7 @@ async def list_events(
 
     stmt = select(ActivityEvent).where(ActivityEvent.project_id == project_id)
 
-    if user.role != UserRole.architect:
+    if user.role not in (UserRole.architect, UserRole.admin):
         stmt = stmt.where(ActivityEvent.visibility == "client")
 
     if event_type:
