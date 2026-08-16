@@ -1,12 +1,21 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
 import { listMilestones } from '../../api/endpoints/milestones';
 import { getProject } from '../../api/endpoints/projects';
 import { updateFileMilestone } from '../../api/endpoints/files';
 import useAuthStore from '../../stores/authStore';
 import type { DesignFile, ProjectDetail } from '../../types';
 import KanbanColumn from './KanbanColumn';
+import { KanbanCardOverlay } from './KanbanCard';
 import FileViewer from '../file/FileViewer';
 
 interface KanbanBoardProps {
@@ -29,6 +38,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   const isArchitect = user?.role === 'architect';
   const [error, setError] = useState<string | null>(null);
   const [viewingFile, setViewingFile] = useState<DesignFile | null>(null);
+  const [activeFile, setActiveFile] = useState<DesignFile | null>(null);
 
   const mutation = useMutation({
     mutationFn: ({ fileId, milestoneId }: { fileId: string; milestoneId: number | null }) =>
@@ -77,7 +87,12 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
+  function handleDragStart(event: DragStartEvent) {
+    setActiveFile(event.active.data.current?.file ?? null);
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setActiveFile(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
@@ -128,7 +143,12 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
         </div>
       )}
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveFile(null)}
+      >
         <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1">
           {sortedMilestones.map((milestone) => (
             <KanbanColumn
@@ -154,6 +174,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
             />
           )}
         </div>
+        <DragOverlay>{activeFile ? <KanbanCardOverlay file={activeFile} /> : null}</DragOverlay>
       </DndContext>
 
       {viewingFile && (

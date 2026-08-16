@@ -13,6 +13,7 @@ from src.models.user import User, UserRole
 from src.schemas.project import (
     InviteClientRequest,
     ProjectCreate,
+    ProjectDeleteRequest,
     ProjectUpdate,
 )
 from src.services import file as file_service
@@ -202,16 +203,22 @@ async def update_project(
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(
     project_id: int,
+    request: ProjectDeleteRequest,
     db: DBSession,
     current_user: User = Depends(require_role("architect")),
     archive_only: bool = Query(True),
 ):
-    """Delete or archive a project (architect owner only)."""
+    """Archive (reversible) or permanently delete a project (architect owner only).
+
+    Permanent deletion is a danger-zone action and requires the caller to
+    confirm by typing the project name; it removes all objects from RustFS.
+    """
     await project_service.delete_project(
         db=db,
         project_id=project_id,
         user=current_user,
         archive_only=archive_only,
+        confirmation=request.confirmation,
     )
     if archive_only:
         from src.services import activity

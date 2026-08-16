@@ -35,10 +35,12 @@ export async function updateProject(
 
 export async function deleteProject(
   projectId: number,
+  confirmation: string,
   archiveOnly = true,
 ): Promise<void> {
   await apiClient.delete(`/projects/${projectId}`, {
     params: { archive_only: archiveOnly },
+    data: { confirmation },
   });
 }
 

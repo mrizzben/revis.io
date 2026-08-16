@@ -19,10 +19,14 @@ import InviteForm from '../components/project/InviteForm';
 import Skeleton from '../components/ui/Skeleton';
 import OptionsPanel from '../components/options/OptionsPanel';
 import ActivityTimeline from '../components/activity/ActivityTimeline';
+import DangerZone from '../components/project/DangerZone';
+import Badge from '../components/ui/Badge';
+import useAuthStore from '../stores/authStore';
 import { listCollaborators } from '../api/endpoints/collaborators';
 import type { Milestone } from '../types';
 
 export default function ProjectManage() {
+  const { user } = useAuthStore();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -160,6 +164,26 @@ export default function ProjectManage() {
     );
   }
 
+  const handleArchive = async () => {
+    await projectsApi.deleteProject(projectIdNum, project.name, true);
+    queryClient.invalidateQueries({ queryKey: ['project', projectIdNum] });
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+  };
+
+  const handleRestore = async () => {
+    await projectsApi.updateProject(projectIdNum, { is_archived: false });
+    queryClient.invalidateQueries({ queryKey: ['project', projectIdNum] });
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+  };
+
+  const handleDelete = async () => {
+    await projectsApi.deleteProject(projectIdNum, project.name, false);
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+    navigate('/dashboard');
+  };
+
+  const isOwner = project.owner_id === user?.id;
+
   return (
     <div>
       {/* Header */}
@@ -171,7 +195,10 @@ export default function ProjectManage() {
           >
             ← Dashboard
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
+            {project.is_archived && <Badge variant="warning">Archived</Badge>}
+          </div>
           {project.description && <p className="text-gray-600 mt-1">{project.description}</p>}
         </div>
       </div>
@@ -280,6 +307,18 @@ export default function ProjectManage() {
           <ActivityTimeline projectId={projectIdNum} />
         </div>
       </div>
+
+      {/* Danger zone: archive / restore / permanent delete (owner only) */}
+      {isOwner && (
+        <div className="mt-8">
+          <DangerZone
+            project={project}
+            onArchive={handleArchive}
+            onRestore={handleRestore}
+            onDelete={handleDelete}
+          />
+        </div>
+      )}
     </div>
   );
 }

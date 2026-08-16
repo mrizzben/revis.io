@@ -6,12 +6,15 @@ from datetime import UTC, datetime, timedelta
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from src.core.config import settings
 from src.core.security import create_url_safe_token
-from src.models.file import DesignFile
+from src.models.file import DesignFile, FileVersion
 from src.models.milestone import Milestone
 from src.models.project import Invitation, Project, ProjectMember
 from src.models.user import Firm, User, UserRole
+from src.services import file as file_service
 from src.services.notification import send_invitation_email
 
 logger = logging.getLogger(__name__)
@@ -156,18 +159,78 @@ async def delete_project(
     project_id: int,
     user: User,
     archive_only: bool = True,
+    confirmation: str | None = None,
 ) -> None:
-    """Delete or archive a project (architect owner only)."""
+    """Archive or permanently delete a project (architect owner only).
+
+    Archive keeps every object in RustFS (reversible via ``is_archived``).
+    Permanent deletion removes the project rows AND the underlying objects
+    (revisions, thumbnails, previews) from RustFS — irreversible.
+    """
     project = await _get_project_with_access(db, project_id, user, require_owner=True)
 
     if archive_only:
         project.is_archived = True
+        project.updated_at = datetime.now(UTC)
         await db.commit()
         logger.info("Project archived", extra={"project_id": project_id})
-    else:
-        await db.delete(project)
-        await db.commit()
-        logger.info("Project deleted", extra={"project_id": project_id})
+        return
+
+    # Permanent deletion is a danger-zone action: the caller must type the
+    # project name to confirm.
+    if confirmation is None or confirmation.strip() != project.name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Confirmation does not match the project name",
+        )
+
+    # Collect every object key owned by this project before the rows vanish.
+    result = await db.execute(
+        select(DesignFile)
+        .options(selectinload(DesignFile.versions))
+        .where(DesignFile.project_id == project_id)
+    )
+    files = list(result.scalars().all())
+
+    s3 = file_service._get_lazy_s3_client()
+    bucket = settings.S3_BUCKET
+    keys: set[str] = set()
+    for f in files:
+        keys.update(
+            k
+            for k in (f.s3_key, f.thumbnail_small_key, f.thumbnail_medium_key, f.preview_glb_key)
+            if k
+        )
+        keys.update(v.s3_key for v in f.versions)
+
+    # Remove the rows first (DB-level CASCADE). Deleting the design files
+    # through the ORM cascades their loaded version rows so the dedup check
+    # below is accurate in every environment (SQLite tests don't enforce FK
+    # cascade). If an object delete fails the orphan stays in RustFS and is
+    # reclaimed by storage maintenance — the reverse order would strand rows
+    # pointing at deleted objects.
+    for f in files:
+        await db.delete(f)
+    await db.flush()
+    await db.delete(project)
+    await db.flush()
+    for key in keys:
+        remaining = await db.execute(
+            select(func.count()).select_from(FileVersion).where(FileVersion.s3_key == key)
+        )
+        if (remaining.scalar() or 0) > 0:
+            continue  # deduplicated content still referenced elsewhere
+        try:
+            s3.delete_object(Bucket=bucket, Key=key)
+        except Exception as e:
+            # ponytail: log-and-continue like purge_soft_deleted; orphans are
+            # reclaimed by maintenance. A full rollback would need staging.
+            logger.error("Project delete: S3 delete failed", extra={"key": key, "error": str(e)})
+    await db.commit()
+    logger.info(
+        "Project permanently deleted",
+        extra={"project_id": project_id, "objects_removed": len(keys)},
+    )
 
 
 async def _get_project_with_access(
