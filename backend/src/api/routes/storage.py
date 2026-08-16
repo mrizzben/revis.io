@@ -13,7 +13,9 @@ router = APIRouter(prefix="/storage", tags=["Storage"])
 
 
 async def _require_firm_or_owner(db: DBSession, user: User, project_id: int | None = None) -> None:
-    """Storage admin requires an architect who is a firm admin or the project owner."""
+    """Storage access: app admin (superuser), or architect firm-admin/owner."""
+    if user.role == UserRole.admin:
+        return
     if user.role != UserRole.architect:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Architect access required")
     if project_id is not None:
@@ -39,7 +41,10 @@ async def storage_usage(
     if project_id is not None:
         await _require_firm_or_owner(db, current_user, project_id)
     elif firm_id is not None:
-        if current_user.role != UserRole.architect or current_user.firm_id != firm_id or not current_user.is_firm_admin:
+        if (current_user.role != UserRole.admin
+                and (current_user.role != UserRole.architect
+                     or current_user.firm_id != firm_id
+                     or not current_user.is_firm_admin)):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Firm admin access required")
     else:
         raise HTTPException(
@@ -57,7 +62,9 @@ async def orphaned_objects(
     current_user: User = Depends(get_current_user),
 ):
     """List S3 objects not referenced by any revision record (T8)."""
-    if current_user.role != UserRole.architect or not current_user.is_firm_admin:
+    if current_user.role != UserRole.admin and (
+        current_user.role != UserRole.architect or not current_user.is_firm_admin
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Firm admin access required")
 
     known_keys = await file_service.get_all_revision_keys(db)
@@ -86,7 +93,9 @@ async def run_maintenance(
     - purge soft-deleted design items past the retention window
     Returns a report of what was cleaned up.
     """
-    if current_user.role != UserRole.architect or not current_user.is_firm_admin:
+    if current_user.role != UserRole.admin and (
+        current_user.role != UserRole.architect or not current_user.is_firm_admin
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Firm admin access required")
 
     s3 = file_service._get_lazy_s3_client()

@@ -8,7 +8,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from src.api.dependencies import DBSession, get_current_user, require_role
+from src.api.dependencies import DBSession, get_current_participant, require_role
 from src.models.file import DesignFile, RevisionVisibility
 from src.models.milestone import Milestone
 from src.models.project import ProjectMember
@@ -365,7 +365,7 @@ async def _list_files_route(
 async def get_file(
     file_id: str,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     """Get file details with role-aware revision info."""
     file = await file_service.get_file(db, file_id)
@@ -416,7 +416,7 @@ async def delete_file(
 async def get_download_url(
     file_id: str,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
     return_url: bool = Query(False),
     inline: bool = Query(False),
 ):
@@ -503,7 +503,7 @@ async def update_file_milestone(
 async def get_thumbnail(
     file_id: str,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
     size: str = Query("small", pattern="^(small|medium)$"),
     return_url: bool = Query(False),
 ):
@@ -544,7 +544,7 @@ async def get_thumbnail(
 async def get_preview(
     file_id: str,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     """Get a 3D preview URL (redirect to presigned S3 URL for glTF/GLB)."""
     file = await file_service.get_file(db, file_id)
@@ -584,7 +584,7 @@ def _version_payload(version) -> dict:
 async def list_versions(
     file_id: str,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
     include_archived: bool = Query(False),
 ):
     """List revisions (role-aware: clients see only issued history)."""
@@ -610,7 +610,7 @@ async def get_version_detail(
     file_id: str,
     version_number: int,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     """Get one revision's detail + download URL (role-checked)."""
     file = await file_service.get_file(db, file_id)
@@ -631,7 +631,7 @@ async def download_version(
     file_id: str,
     version_number: int,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     """Download a specific revision (role-checked, T1)."""
     file = await file_service.get_file(db, file_id)
@@ -943,7 +943,7 @@ async def compare_versions(
     file_id: str,
     request: CompareRequest,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     """Compare two revisions of a design item (T4)."""
     file = await file_service.get_file(db, file_id)

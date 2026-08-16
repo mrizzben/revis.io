@@ -1,6 +1,7 @@
 """Project, Firm, and Invitation services."""
 
 import logging
+import secrets
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
@@ -8,8 +9,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.api.dependencies import ClientSession
 from src.core.config import settings
-from src.core.security import create_url_safe_token
+from src.core.security import create_url_safe_token, hash_password, verify_password
 from src.models.file import DesignFile, FileVersion
 from src.models.milestone import Milestone
 from src.models.project import Invitation, Project, ProjectMember
@@ -32,20 +34,19 @@ async def create_project(
     description: str | None = None,
     firm_id: int | None = None,
 ) -> Project:
-    """Create a new project (architect only)."""
-    if user.role != UserRole.architect:
+    """Create a new project (architect or admin)."""
+    if user.role not in (UserRole.architect, UserRole.admin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only architects can create projects",
         )
 
     # Validate firm ownership
-    if firm_id is not None:
-        if user.firm_id != firm_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only create projects for your own firm",
-            )
+    if firm_id is not None and user.firm_id != firm_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only create projects for your own firm",
+        )
 
     project = Project(
         name=name.strip(),
@@ -73,7 +74,23 @@ async def list_projects(
     include_archived: bool = False,
 ) -> list[dict]:
     """List projects for the current user based on their role."""
-    if user.role == UserRole.architect:
+    client_project_id = getattr(user, "client_project_id", None)
+    if client_project_id is not None:
+        # Anonymous client session (secure link): only the scoped project,
+        # and only while client access remains enabled.
+        result = await db.execute(
+            select(Project).where(
+                Project.id == client_project_id,
+                Project.is_archived == include_archived,
+                Project.client_token.is_not(None),
+            )
+        )
+        projects = list(result.scalars().all())
+    elif user.role == UserRole.admin:
+        # Admin is the app superuser: sees every project.
+        result = await db.execute(select(Project).where(Project.is_archived == include_archived))
+        projects = list(result.scalars().all())
+    elif user.role == UserRole.architect:
         # Architects see projects they own or firm projects
         query = select(Project).where(
             Project.owner_id == user.id,
@@ -236,31 +253,48 @@ async def delete_project(
 async def _get_project_with_access(
     db: AsyncSession,
     project_id: int,
-    user: User,
+    user: User | ClientSession,
     require_owner: bool = False,
 ) -> Project:
-    """Get a project and verify the user has access."""
+    """Get a project and verify the user has access.
+
+    ``user`` may be a registered User (owner/architect/collaborator/client
+    member) or an anonymous ClientSession scoped to one project via the
+    client secure link.
+    """
     result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalar_one_or_none()
 
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
-    if require_owner and project.owner_id != user.id:
+    client_project_id = getattr(user, "client_project_id", None)
+
+    if require_owner and project.owner_id != user.id and user.role != UserRole.admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the project owner can perform this action",
         )
 
     if user.role == UserRole.client:
-        member_result = await db.execute(
-            select(ProjectMember).where(
-                ProjectMember.project_id == project_id,
-                ProjectMember.user_id == user.id,
+        if client_project_id is not None:
+            # Anonymous client session: scoped to exactly this project, and
+            # only while the owner/admin has client access enabled.
+            if client_project_id != project_id or project.client_token is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+                )
+        else:
+            member_result = await db.execute(
+                select(ProjectMember).where(
+                    ProjectMember.project_id == project_id,
+                    ProjectMember.user_id == user.id,
+                )
             )
-        )
-        if not member_result.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+            if not member_result.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+                )
 
     return project
 
@@ -314,7 +348,7 @@ async def create_invitation(
     """Create an invitation for a client to join a project."""
     project = await _get_project_with_access(db, project_id, invited_by, require_owner=True)
 
-    if invited_by.role != UserRole.architect:
+    if invited_by.role not in (UserRole.architect, UserRole.admin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only architects can invite clients",
@@ -398,6 +432,125 @@ async def get_invitation(
 
 
 # ═══════════════════════════════════════════════════════════
+# Client Secure-Link Access (no sign-up required)
+# ═══════════════════════════════════════════════════════════
+
+GUEST_EMAIL_DOMAIN = "revis.io"
+
+
+def _guest_email(project_id: int) -> str:
+    return f"guest-{project_id}@{GUEST_EMAIL_DOMAIN}"
+
+
+async def ensure_project_guest_user(db: AsyncSession, project: Project) -> User:
+    """Per-project guest identity for anonymous client sessions.
+
+    The owner/admin enables client access; clients who use the secure link
+    (no sign-up) act through this identity so comments/reviews have a stable
+    author. Emails on the reserved ``guest-*@revis.io`` namespace cannot be
+    registered by real users (see ``register_user``).
+    """
+    result = await db.execute(select(User).where(User.email == _guest_email(project.id)))
+    guest = result.scalar_one_or_none()
+    if guest is not None:
+        return guest
+
+    guest = User(
+        email=_guest_email(project.id),
+        name="Client Guest",
+        hashed_password=hash_password(secrets.token_urlsafe(24)),
+        role=UserRole.client,
+        is_active=True,
+        is_verified=True,
+    )
+    db.add(guest)
+    await db.flush()
+    return guest
+
+
+async def configure_client_access(
+    db: AsyncSession,
+    project: Project,
+    password: str | None = None,
+) -> Project:
+    """Enable or rotate a project's client secure-link access.
+
+    Sets (or replaces) the client access password and generates a fresh link
+    token. Called by the project owner or an admin. Re-running rotates the
+    token and invalidates previously shared links/sessions.
+    """
+    if password is not None:
+        if len(password) < 8:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Client access password must be at least 8 characters",
+            )
+        project.client_password_hash = hash_password(password)
+    elif project.client_password_hash is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A client access password is required the first time",
+        )
+
+    project.client_token = create_url_safe_token()
+    await db.commit()
+    await db.refresh(project)
+    await ensure_project_guest_user(db, project)
+    await db.commit()
+    return project
+
+
+async def disable_client_access(db: AsyncSession, project: Project) -> Project:
+    """Disable the project's client secure-link access.
+
+    Clears the link token and password; existing client sessions for this
+    project are rejected on their next request.
+    """
+    project.client_token = None
+    project.client_password_hash = None
+    await db.commit()
+    await db.refresh(project)
+    return project
+
+
+async def get_client_access_info(db: AsyncSession, token: str) -> dict:
+    """Public info for the secure-link landing page (no auth required)."""
+    result = await db.execute(select(Project).where(Project.client_token == token))
+    project = result.scalar_one_or_none()
+    if not project or project.is_archived:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found")
+    return {
+        "project_name": project.name,
+        "archived": project.is_archived,
+    }
+
+
+async def authenticate_client_access(
+    db: AsyncSession,
+    token: str,
+    password: str,
+) -> tuple[Project, User]:
+    """Validate a client's secure-link password; returns the project and the
+    per-project guest identity for the resulting scoped session.
+    """
+    result = await db.execute(select(Project).where(Project.client_token == token))
+    project = result.scalar_one_or_none()
+    if not project or project.client_password_hash is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid link or password"
+        )
+    if project.is_archived:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Project is archived")
+    if not verify_password(password, project.client_password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid link or password"
+        )
+    guest = await ensure_project_guest_user(db, project)
+    await db.commit()
+    return project, guest
+
+
+# ═══════════════════════════════════════════════════════════
 # Firm Service (T030)
 # ═══════════════════════════════════════════════════════════
 
@@ -408,7 +561,7 @@ async def create_firm(
     name: str,
 ) -> Firm:
     """Create a new firm. The creating user becomes the firm admin."""
-    if user.role != UserRole.architect:
+    if user.role not in (UserRole.architect, UserRole.admin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only architects can create firms",

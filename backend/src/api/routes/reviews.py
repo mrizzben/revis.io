@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends
 
-from src.api.dependencies import DBSession, get_current_user
+from src.api.dependencies import DBSession, get_current_participant
 from src.models.user import User
 from src.schemas.review import ReviewCreate, ReviewTransitionRequest
 from src.services import review as review_service
@@ -40,7 +40,7 @@ async def create_review(
     file_id: str,
     data: ReviewCreate,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     review = await review_service.create_review(
         db=db,
@@ -57,7 +57,7 @@ async def create_review(
 async def list_reviews(
     file_id: str,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     reviews = await review_service.list_reviews(db, file_id, current_user)
     return [_serialize(r) for r in reviews]
@@ -68,7 +68,7 @@ async def transition_review(
     review_id: int,
     data: ReviewTransitionRequest,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     review = await review_service.transition_review(
         db, review_id, current_user, data.action, data.comment

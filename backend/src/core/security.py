@@ -1,6 +1,10 @@
-"""JWT token creation/validation and password hashing with pwdlib (Argon2)."""
+"""JWT token creation/validation and password hashing with pwdlib (Argon2).
 
-from datetime import datetime, timedelta, timezone
+Access tokens may carry a ``client_project_id`` claim: an anonymous client
+session granted via a project's secure link (no sign-up).
+"""
+
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
@@ -26,16 +30,19 @@ def create_access_token(
     subject: int,
     role: str,
     firm_id: int | None = None,
+    client_project_id: int | None = None,
     expires_delta: timedelta | None = None,
 ) -> str:
     """Create a JWT access token.
 
-    Token payload: {sub: user_id, role, firm_id, type: "access", exp, iat}
+    Token payload: {sub: user_id, role, firm_id?, client_project_id?, type: "access", exp, iat}
+    ``client_project_id`` scopes the token to one project (anonymous client
+    reviewer session via secure link, no sign-up).
     """
     if expires_delta is None:
         expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload: dict[str, Any] = {
         "sub": str(subject),
         "role": role,
@@ -45,6 +52,8 @@ def create_access_token(
     }
     if firm_id is not None:
         payload["firm_id"] = firm_id
+    if client_project_id is not None:
+        payload["client_project_id"] = client_project_id
 
     return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
@@ -60,7 +69,7 @@ def create_refresh_token(
     if expires_delta is None:
         expires_delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload: dict[str, Any] = {
         "sub": str(subject),
         "type": "refresh",
@@ -79,4 +88,5 @@ def decode_token(token: str) -> dict[str, Any]:
 def create_url_safe_token(length: int = 32) -> str:
     """Create a URL-safe random token for invitations, email verification, etc."""
     import secrets
+
     return secrets.token_urlsafe(length)

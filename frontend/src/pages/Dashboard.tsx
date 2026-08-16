@@ -104,12 +104,12 @@ export default function Dashboard() {
             )}
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            {user?.role === 'architect'
+            {user?.role === 'architect' || user?.role === 'admin'
               ? 'Manage your design projects'
               : 'View your design projects'}
           </p>
         </div>
-        {user?.role === 'architect' && (
+        {(user?.role === 'architect' || user?.role === 'admin') && (
           <Button onClick={() => setIsCreateOpen(true)}>New Project</Button>
         )}
       </div>
@@ -166,7 +166,7 @@ export default function Dashboard() {
           </svg>
           {tab === 'archived' ? (
             <p className="text-gray-900 font-medium mb-1">No archived projects</p>
-          ) : user?.role === 'architect' ? (
+          ) : user?.role === 'architect' || user?.role === 'admin' ? (
             <>
               <p className="text-gray-900 font-medium mb-1">No projects yet</p>
               <p className="text-gray-500 text-sm mb-4">Create your first project to get started</p>

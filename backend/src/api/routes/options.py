@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from src.api.dependencies import DBSession, get_current_user
+from src.api.dependencies import DBSession, get_current_participant, get_current_user
 from src.models.design_option import DesignOption
 from src.models.file import DesignFile
 from src.models.user import User, UserRole
@@ -38,7 +38,9 @@ def _serialize(option: DesignOption, file_count: int = 0) -> dict:
 
 async def _count_files(db: DBSession, option_id: int) -> int:
     result = await db.execute(
-        select(func.count()).select_from(DesignFile).where(
+        select(func.count())
+        .select_from(DesignFile)
+        .where(
             DesignFile.design_option_id == option_id,
             DesignFile.is_deleted.is_(False),
         )
@@ -50,7 +52,7 @@ async def _count_files(db: DBSession, option_id: int) -> int:
 async def list_options(
     project_id: int,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     """List design options. Clients only ever see the current, non-archived option."""
     await project_service._get_project_with_access(db, project_id, current_user)
@@ -72,9 +74,7 @@ async def create_option(
     current_user: User = Depends(get_current_user),
 ):
     """Create a design option, e.g. 'Option A' or 'Courtyard scheme' (T5)."""
-    await project_service._get_project_with_access(
-        db, project_id, current_user, require_owner=True
-    )
+    await project_service._get_project_with_access(db, project_id, current_user, require_owner=True)
     option = DesignOption(
         project_id=project_id,
         name=data.name.strip(),
@@ -168,7 +168,9 @@ async def fork_item(
     if not option:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Option not found")
     if option.is_archived:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Archived options cannot receive forks")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Archived options cannot receive forks"
+        )
 
     await project_service._get_project_with_access(
         db, option.project_id, current_user, require_owner=True
@@ -207,7 +209,9 @@ async def fork_item(
     await db.flush()
 
     src_versions = await db.execute(
-        select(FileVersion).where(FileVersion.file_id == source.id).order_by(FileVersion.version_number)
+        select(FileVersion)
+        .where(FileVersion.file_id == source.id)
+        .order_by(FileVersion.version_number)
     )
     copied: list[FileVersion] = []
     for v in src_versions.scalars().all():
@@ -273,12 +277,10 @@ async def fork_item(
 async def list_option_files(
     option_id: int,
     db: DBSession,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_participant),
 ):
     """List design items in an option (role-aware)."""
-    result = await db.execute(
-        select(DesignOption).where(DesignOption.id == option_id)
-    )
+    result = await db.execute(select(DesignOption).where(DesignOption.id == option_id))
     option = result.scalar_one_or_none()
     if not option:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Option not found")
@@ -300,11 +302,5 @@ async def list_option_files(
         for f in files:
             if await file_service.list_client_versions(db, str(f.id)):
                 visible.append(f)
-        return [
-            await file_service.build_file_payload(db, f, current_user)
-            for f in visible
-        ]
-    return [
-        await file_service.build_file_payload(db, f, current_user)
-        for f in files
-    ]
+        return [await file_service.build_file_payload(db, f, current_user) for f in visible]
+    return [await file_service.build_file_payload(db, f, current_user) for f in files]

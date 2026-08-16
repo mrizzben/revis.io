@@ -26,7 +26,12 @@ async def ws_connect(
             await websocket.close(code=4001, reason="Authentication failed")
             return
 
-        has_access = await verify_project_access(db, project_id, user.id)
+        # Anonymous client sessions (secure link) are scoped to one project via
+        # the client_project_id claim; verify against that rather than membership.
+        client_project_id = payload.get("client_project_id")
+        has_access = await verify_project_access(
+            db, project_id, user.id, client_project_id=client_project_id
+        )
         if not has_access:
             await websocket.close(code=4003, reason="Access denied")
             return

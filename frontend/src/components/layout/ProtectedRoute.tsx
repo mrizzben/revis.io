@@ -3,7 +3,7 @@ import useAuthStore from '../../stores/authStore';
 
 interface ProtectedRouteProps {
   children?: React.ReactNode;
-  requiredRole?: 'architect' | 'client';
+  requiredRole?: 'admin' | 'architect' | 'client';
 }
 
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
@@ -14,7 +14,12 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
+  // Admin is the app superuser: passes every role gate.
+  if (
+    requiredRole &&
+    user?.role !== requiredRole &&
+    !(requiredRole === 'architect' && user?.role === 'admin')
+  ) {
     return <Navigate to="/dashboard" replace />;
   }
 

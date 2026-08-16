@@ -24,6 +24,7 @@ import Badge from '../components/ui/Badge';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import useAuthStore from '../stores/authStore';
 import { listCollaborators } from '../api/endpoints/collaborators';
+import ClientAccessCard from '../components/project/ClientAccessCard';
 import type { Milestone } from '../types';
 
 export default function ProjectManage() {
@@ -183,7 +184,8 @@ export default function ProjectManage() {
     navigate('/dashboard');
   };
 
-  const isOwner = project.owner_id === user?.id;
+  const isOwner = project.owner_id === user?.id || user?.role === 'admin';
+  const canManage = isOwner;
 
   return (
     <div>
@@ -289,8 +291,9 @@ export default function ProjectManage() {
           <OptionsPanel projectId={projectIdNum} isOwner files={project.files ?? []} />
         </div>
 
-        {/* Sidebar: Invite + Activity */}
+        {/* Sidebar: Client access + Invite + Activity */}
         <div className="space-y-6">
+          {canManage && <ClientAccessCard projectId={projectIdNum} />}
           <InviteForm projectId={projectIdNum} />
           <ActivityTimeline projectId={projectIdNum} />
         </div>

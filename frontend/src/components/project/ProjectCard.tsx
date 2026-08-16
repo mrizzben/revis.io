@@ -9,7 +9,7 @@ interface ProjectCardProps {
 
 export default function ProjectCard({ project }: ProjectCardProps) {
   const { user } = useAuthStore();
-  const isArchitect = user?.role === 'architect';
+  const isArchitect = user?.role === 'architect' || user?.role === 'admin';
 
   const progress =
     project.milestone_count > 0

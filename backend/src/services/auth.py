@@ -45,6 +45,14 @@ async def register_user(
             detail="A user with this email already exists",
         )
 
+    # The guest-*@revis.io namespace is reserved for per-project anonymous
+    # client identities (secure-link access, no sign-up).
+    if email.lower().endswith("@revis.io") and email.lower().startswith("guest-"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This email address is reserved",
+        )
+
     user_role = UserRole(role)
 
     # Trim name
@@ -187,12 +195,19 @@ async def refresh_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token: missing subject",
         )
+    try:
+        subject = int(user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: malformed subject",
+        ) from None
 
     # Note: We don't look up the user here since we don't have a db session.
     # The access token will contain the user_id which is validated on next request.
     # For proper token rotation, you'd store refresh tokens in a database.
     access_token = create_access_token(
-        subject=int(user_id),
+        subject=subject,
         role=payload.get("role", "architect"),
         firm_id=payload.get("firm_id"),
     )

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.api.dependencies import ClientSession
 from src.models.comment import Comment
 from src.models.file import CLIENT_VISIBLE_VISIBILITIES, DesignFile, FileVersion
 from src.models.project import Project
@@ -19,7 +20,6 @@ from src.websocket import get_manager
 
 
 class CommentService:
-
     @staticmethod
     def to_dict(comment: Comment, version_numbers: dict[int, int] | None = None) -> dict:
         """Serialize a (relationship-loaded) comment with revision scope (T1)."""
@@ -30,7 +30,9 @@ class CommentService:
             "parent_id": comment.parent_id,
             "version_id": comment.version_id,
             "scope": "revision" if comment.version_id else "all",
-            "version_number": version_numbers.get(comment.version_id) if comment.version_id else None,
+            "version_number": version_numbers.get(comment.version_id)
+            if comment.version_id
+            else None,
             "body": comment.body,
             "is_resolved": comment.is_resolved,
             "resolved_at": comment.resolved_at,
@@ -78,7 +80,7 @@ class CommentService:
 
     @staticmethod
     async def create_comment(
-        db: AsyncSession, file_id: str, data: CommentCreate, author_id: int
+        db: AsyncSession, file_id: str, data: CommentCreate, author: User | ClientSession
     ) -> Comment:
         file_uuid = uuid.UUID(str(file_id)) if not isinstance(file_id, uuid.UUID) else file_id
         file_result = await db.execute(
@@ -89,16 +91,7 @@ class CommentService:
         )
         file = file_result.scalar_one_or_none()
         if not file:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
-            )
-
-        author_result = await db.execute(select(User).where(User.id == author_id))
-        author = author_result.scalar_one_or_none()
-        if not author:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Author not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
         from src.services.project import _get_project_with_access
 
@@ -116,16 +109,17 @@ class CommentService:
                     detail="Revision not found on this file",
                 )
             # Clients may only comment on revisions they were issued (T7).
-            if author.role == UserRole.client and version.visibility not in CLIENT_VISIBLE_VISIBILITIES:
+            if (
+                author.role == UserRole.client
+                and version.visibility not in CLIENT_VISIBLE_VISIBILITIES
+            ):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You cannot comment on this revision",
                 )
 
         if data.parent_id is not None:
-            parent_result = await db.execute(
-                select(Comment).where(Comment.id == data.parent_id)
-            )
+            parent_result = await db.execute(select(Comment).where(Comment.id == data.parent_id))
             parent = parent_result.scalar_one_or_none()
             if not parent or str(parent.file_id) != file_id:
                 raise HTTPException(
@@ -135,7 +129,7 @@ class CommentService:
 
         comment = Comment(
             file_id=file_uuid,
-            author_id=author_id,
+            author_id=author.id,
             parent_id=data.parent_id,
             version_id=data.version_id,
             body=data.body.strip(),
@@ -153,7 +147,9 @@ class CommentService:
 
         # Comment applies to the item as a whole, or to one revision (T1).
         comment_is_client_visible = False
-        if author.role == UserRole.client or (version is not None and version.visibility in CLIENT_VISIBLE_VISIBILITIES):
+        if author.role == UserRole.client or (
+            version is not None and version.visibility in CLIENT_VISIBLE_VISIBILITIES
+        ):
             comment_is_client_visible = True
 
         try:
@@ -172,16 +168,13 @@ class CommentService:
                 from src.models.project import Project, ProjectMember
 
                 team_result = await db.execute(
-                    select(ProjectMember)
-                    .where(
+                    select(ProjectMember).where(
                         ProjectMember.project_id == file.project_id,
                         ProjectMember.role == "collaborator",
                     )
                 )
                 team_ids = [m.user_id for m in team_result.scalars().all()]
-                proj_result = await db.execute(
-                    select(Project).where(Project.id == file.project_id)
-                )
+                proj_result = await db.execute(select(Project).where(Project.id == file.project_id))
                 owner = proj_result.scalar_one_or_none()
                 if owner and owner.owner_id:
                     team_ids.append(owner.owner_id)
@@ -201,7 +194,7 @@ class CommentService:
         await activity.record_event(
             db,
             project_id=file.project_id,
-            actor_id=author_id,
+            actor_id=author.id,
             event_type="comment_created",
             entity_type="comment",
             entity_id=comment.id,
@@ -214,9 +207,7 @@ class CommentService:
         )
 
         if data.parent_id is not None:
-            project_name = await CommentService._get_project_name(
-                db, file.project_id
-            )
+            project_name = await CommentService._get_project_name(db, file.project_id)
             await send_comment_reply_notification(
                 db=db,
                 parent_comment_id=data.parent_id,
@@ -239,9 +230,7 @@ class CommentService:
             )
         )
         if not file_result.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
         stmt = (
             select(Comment)
@@ -312,14 +301,10 @@ class CommentService:
 
     @staticmethod
     async def get_comment(db: AsyncSession, comment_id: int) -> Comment:
-        result = await db.execute(
-            select(Comment).where(Comment.id == comment_id)
-        )
+        result = await db.execute(select(Comment).where(Comment.id == comment_id))
         comment = result.scalar_one_or_none()
         if not comment:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
         return comment
 
     @staticmethod
@@ -360,9 +345,7 @@ class CommentService:
             )
 
         # Resolution audit (T3): record who resolved/reopened and when.
-        resolved_changed = (
-            data.is_resolved is not None and data.is_resolved != was_resolved
-        )
+        resolved_changed = data.is_resolved is not None and data.is_resolved != was_resolved
         if resolved_changed:
             comment.resolved_by_id = None if comment.is_resolved else None
             if comment.is_resolved:
@@ -398,9 +381,7 @@ class CommentService:
         return CommentService.to_dict(comment)
 
     @staticmethod
-    async def delete_comment(
-        db: AsyncSession, comment_id: int, user_id: int
-    ) -> None:
+    async def delete_comment(db: AsyncSession, comment_id: int, user_id: int) -> None:
         comment = await CommentService.get_comment(db, comment_id)
 
         is_author = comment.author_id == user_id

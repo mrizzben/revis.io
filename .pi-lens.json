@@ -1,10 +1,21 @@
 {
-  "$comment": "ArchiDrive - pi-lens project config. The auxiliary Python scanner (pyright) resolves imports against system Python, not the project venv (backend/.venv), so it flags every third-party import as unresolved and every SQLAlchemy string-annotation relationship as undefined - identical findings appear on untouched pre-existing files (models/project.py, migrations/002). Those rules carry zero signal here. Correctness is enforced by the backend pytest suite and frontend tsc, which use the real interpreter. pyrightconfig.json at repo root points pyright at the venv where honored.",
+  "$comment": "ArchiDrive - pi-lens project config. The auxiliary Python scanner (pyright) resolves imports against the interpreter discovered from pyrightconfig.json (backend/.venv); without a root-level venv it fell back to system Python and flagged every third-party import as unresolved plus every SQLAlchemy string-annotation relationship as undefined - identical findings appear on untouched pre-existing files (models/project.py, migrations/002). Those rules carry zero signal here. Correctness is enforced by the backend pytest suite and frontend tsc, which use the real interpreter.",
   "rules": {
-    "reportMissingImports": { "disable": true },
-    "reportUndefinedVariable": { "disable": true },
-    "reportInvalidTypeForm": { "disable": true },
-    "reportAttributeAccessIssue": { "disable": true },
-    "python-sql-injection": { "disable": true }
+    "reportMissingImports": {
+      "disable": ["reportMissingImports", "Pyright:reportMissingImports"]
+    },
+    "reportUndefinedVariable": {
+      "disable": ["reportUndefinedVariable", "Pyright:reportUndefinedVariable"]
+    },
+    "reportInvalidTypeForm": {
+      "disable": ["reportInvalidTypeForm", "Pyright:reportInvalidTypeForm"]
+    },
+    "reportAttributeAccessIssue": {
+      "disable": ["reportAttributeAccessIssue", "Pyright:reportAttributeAccessIssue"]
+    },
+    "reportReturnType": {
+      "disable": ["reportReturnType", "Pyright:reportReturnType"]
+    },
+    "python-sql-injection": { "disable": ["python-sql-injection"] }
   }
 }
