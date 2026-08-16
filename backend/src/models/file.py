@@ -1,6 +1,8 @@
 """DesignFile and FileVersion SQLAlchemy models."""
 
 import enum
+from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     BigInteger,
@@ -18,6 +20,14 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
+
+if TYPE_CHECKING:
+    from src.models.comment import Comment
+    from src.models.design_option import DesignOption
+    from src.models.milestone import Milestone
+    from src.models.project import Project
+    from src.models.review import Review
+    from src.models.user import User
 
 
 class ThumbnailStatus(str, enum.Enum):
@@ -78,9 +88,7 @@ class DesignFile(Base):
         nullable=True,
     )
     parent_file_id: Mapped[str | None] = mapped_column(Uuid, nullable=True)
-    uploaded_by_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    uploaded_by_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     filename: Mapped[str] = mapped_column(String(512), nullable=False)
     file_type: Mapped[str] = mapped_column(String(20), nullable=False)
     content_type: Mapped[str] = mapped_column(String(127), nullable=False)
@@ -101,10 +109,10 @@ class DesignFile(Base):
     preview_glb_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     preview_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[DateTime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    updated_at: Mapped[DateTime] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -146,38 +154,32 @@ class FileVersion(Base):
     s3_key: Mapped[str] = mapped_column(String(1024), nullable=False)
     file_size: Mapped[int] = mapped_column(BigInteger, nullable=False)
     content_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    uploaded_by_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    uploaded_by_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     revision_message: Mapped[str | None] = mapped_column(String(512), nullable=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     visibility: Mapped[RevisionVisibility] = mapped_column(
-        Enum(RevisionVisibility, name="revision_visibility"),
+        Enum(RevisionVisibility, name="revision_visibility", native_enum=False, length=20),
         nullable=False,
         default=RevisionVisibility.internal,
     )
-    issued_by_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=True
-    )
-    issued_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    issued_by_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     superseded_by_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    superseded_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     milestone_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("milestones.id", ondelete="SET NULL"), nullable=True
     )
     scan_status: Mapped[ScanStatus] = mapped_column(
-        Enum(ScanStatus, name="scan_status"),
+        Enum(ScanStatus, name="scan_status", native_enum=False, length=20),
         nullable=False,
         default=ScanStatus.pending,
     )
     mime_valid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    restored_from_superseded: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
-    created_at: Mapped[DateTime] = mapped_column(
+    restored_from_superseded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -193,6 +195,4 @@ class FileVersion(Base):
         "Comment", back_populates="version", foreign_keys="Comment.version_id"
     )
 
-    __table_args__ = (
-        UniqueConstraint("file_id", "version_number"),
-    )
+    __table_args__ = (UniqueConstraint("file_id", "version_number"),)

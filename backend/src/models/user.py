@@ -1,6 +1,7 @@
 """User, Firm, EmailVerification, and PasswordReset SQLAlchemy models."""
 
 import enum
+from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -20,19 +21,17 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, name="user_role"), nullable=False
-    )
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     firm_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("firms.id", ondelete="SET NULL"), nullable=True
     )
     is_firm_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[DateTime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    updated_at: Mapped[DateTime] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -51,10 +50,10 @@ class Firm(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[DateTime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    updated_at: Mapped[DateTime] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -71,10 +70,8 @@ class EmailVerification(Base):
     )
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    expires_at: Mapped[DateTime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    created_at: Mapped[DateTime] = mapped_column(
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -91,10 +88,8 @@ class PasswordReset(Base):
     )
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    expires_at: Mapped[DateTime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    created_at: Mapped[DateTime] = mapped_column(
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
