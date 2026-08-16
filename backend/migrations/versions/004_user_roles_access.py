@@ -1,5 +1,9 @@
 """Fine-grained user roles: admin sub-role + client secure-link access
 
+- ``user_role`` enum gains ``admin`` (app superuser)
+- ``projects`` gains ``client_token`` + ``client_password_hash`` for the
+  secure-link client access flow (no sign-up required)
+
 Revision ID: 004
 Revises: 003
 Create Date: 2026-08-20
