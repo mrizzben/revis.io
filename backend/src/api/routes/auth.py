@@ -29,7 +29,7 @@ oauth_callback_limiter = RateLimiter(max_requests=10, window_seconds=3600)
 
 
 @router.get("/google/authorize")
-async def google_authorize(response: Response):
+async def google_authorize():
     """Start Google OAuth: set a state cookie and redirect to Google's consent screen."""
     if not oauth_service.oauth_enabled():
         raise HTTPException(
@@ -38,6 +38,7 @@ async def google_authorize(response: Response):
         )
 
     state = secrets.token_urlsafe(32)
+    response = RedirectResponse(oauth_service.build_google_auth_url(state), status_code=302)
     response.set_cookie(
         key="oauth_state",
         value=state,
@@ -47,7 +48,7 @@ async def google_authorize(response: Response):
         max_age=600,  # 10 minutes: enough for the consent round-trip
         path="/api/auth/google",
     )
-    return RedirectResponse(oauth_service.build_google_auth_url(state), status_code=302)
+    return response
 
 
 @router.get("/google/callback")
