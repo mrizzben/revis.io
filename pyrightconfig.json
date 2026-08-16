@@ -1,5 +1,6 @@
 {
   "include": ["backend/src", "backend/migrations"],
   "exclude": ["frontend", "node_modules"],
-  "pythonPath": "/Users/rizz/.herdr/worktrees/revisio/feat-update-auth-method/backend/.venv/bin/python"
+  "venvPath": "backend",
+  "venv": ".venv"
 }
