@@ -114,7 +114,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
   if (milestones.length === 0) {
     return (
-      <div className="border border-border bg-white py-12 px-6 text-center">
+      <div className="card text-center py-12 px-6">
         <svg
           className="w-10 h-10 text-gray-300 mx-auto mb-3"
           fill="none"

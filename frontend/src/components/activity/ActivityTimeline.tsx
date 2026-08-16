@@ -1,32 +1,50 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { listActivity } from '../../api/endpoints/activity';
+import Icon, { type IconName } from '../ui/icons';
 import Spinner from '../ui/Spinner';
 
-const EVENT_LABELS: Record<string, { label: string; icon: string }> = {
-  revision_created: { label: 'Revision uploaded', icon: '⬆️' },
-  revision_issued: { label: 'Revision issued to client', icon: '📤' },
-  revision_restored: { label: 'Revision restored', icon: '↩️' },
-  revision_superseded: { label: 'Revision superseded', icon: '⏭️' },
-  revision_archived: { label: 'Revision archived', icon: '🗄️' },
-  revision_updated: { label: 'Revision updated', icon: '✏️' },
-  comment_created: { label: 'Comment added', icon: '💬' },
-  comment_resolved: { label: 'Comment resolved', icon: '✅' },
-  comment_reopened: { label: 'Comment reopened', icon: '🔄' },
-  review_requested: { label: 'Review requested', icon: '👀' },
-  review_approved: { label: 'Review approved', icon: '👍' },
-  review_changes_requested: { label: 'Changes requested', icon: '✍️' },
-  review_in_review: { label: 'Review started', icon: '🔍' },
-  milestone_changed: { label: 'Milestone changed', icon: '📍' },
-  file_deleted: { label: 'File deleted', icon: '🗑️' },
-  item_forked: { label: 'Item forked into option', icon: '🍴' },
-  option_created: { label: 'Design option created', icon: '🧩' },
-  option_updated: { label: 'Design option updated', icon: '🧩' },
+const EVENT_ICONS: Record<string, IconName> = {
+  revision_created: 'document',
+  revision_issued: 'upload',
+  revision_restored: 'undo',
+  revision_superseded: 'forward',
+  revision_archived: 'archive-box',
+  revision_updated: 'pencil',
+  comment_created: 'chat',
+  comment_resolved: 'check-circle',
+  comment_reopened: 'refresh',
+  review_requested: 'eye',
+  review_approved: 'check-circle',
+  review_changes_requested: 'pencil-edit',
+  review_in_review: 'magnifier',
+  milestone_changed: 'map-pin',
+  file_deleted: 'trash',
+  item_forked: 'fork',
+  option_created: 'puzzle',
+  option_updated: 'puzzle',
 };
 
-function labelFor(type: string): { label: string; icon: string } {
-  return EVENT_LABELS[type] ?? { label: type.replace(/_/g, ' '), icon: '📄' };
-}
+const EVENT_LABELS: Record<string, string> = {
+  revision_created: 'Revision uploaded',
+  revision_issued: 'Revision issued to client',
+  revision_restored: 'Revision restored',
+  revision_superseded: 'Revision superseded',
+  revision_archived: 'Revision archived',
+  revision_updated: 'Revision updated',
+  comment_created: 'Comment added',
+  comment_resolved: 'Comment resolved',
+  comment_reopened: 'Comment reopened',
+  review_requested: 'Review requested',
+  review_approved: 'Review approved',
+  review_changes_requested: 'Changes requested',
+  review_in_review: 'Review started',
+  milestone_changed: 'Milestone changed',
+  file_deleted: 'File deleted',
+  item_forked: 'Item forked into option',
+  option_created: 'Design option created',
+  option_updated: 'Design option updated',
+};
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -79,18 +97,25 @@ export default function ActivityTimeline({ projectId }: ActivityTimelineProps) {
             <p className="text-sm text-gray-400 py-4 text-center">No activity yet.</p>
           )}
           {data?.map((event) => {
-            const { label, icon } = labelFor(event.event_type);
+            const label = EVENT_LABELS[event.event_type] ?? event.event_type.replace(/_/g, ' ');
+            const icon = EVENT_ICONS[event.event_type] ?? 'document';
             const payload = event.payload as Record<string, unknown>;
             const detail =
               (payload.file_name as string) ||
               (payload.milestone_id ? `Milestone ${payload.milestone_id}` : null) ||
               null;
             return (
-              <div key={event.id} className="flex gap-3 py-2.5 border-b border-gray-50 last:border-0">
-                <span className="text-base leading-5">{icon}</span>
+              <div
+                key={event.id}
+                className="flex gap-3 py-2.5 border-b border-gray-50 last:border-0"
+              >
+                <span className="text-gray-400 mt-0.5 flex-shrink-0">
+                  <Icon name={icon} className="w-4 h-4" />
+                </span>
                 <div className="min-w-0">
                   <p className="text-sm text-gray-800">
-                    <span className="font-medium">{event.actor?.name ?? 'Someone'}</span> {label.toLowerCase()}
+                    <span className="font-medium">{event.actor?.name ?? 'Someone'}</span>{' '}
+                    {label.toLowerCase()}
                     {detail ? <span className="text-gray-500"> — {detail}</span> : null}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">{relativeTime(event.created_at)}</p>

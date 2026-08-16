@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
 import Skeleton from '../components/ui/Skeleton';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import ProjectCard from '../components/project/ProjectCard';
 import type { CreateProjectRequest } from '../types';
 
@@ -70,7 +71,7 @@ export default function Dashboard() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="border border-border bg-white">
+            <div key={i} className="card p-0 overflow-hidden">
               <Skeleton height="120px" />
               <div className="p-4 space-y-3">
                 <Skeleton height="20px" width="60%" />
@@ -114,45 +115,33 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-        <div className="border border-border bg-white p-5">
+        <div className="card text-center">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
             {tab === 'archived' ? 'Archived Projects' : 'Total Projects'}
           </p>
           <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
         </div>
-        <div className="border border-border bg-white p-5">
+        <div className="card text-center">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Active</p>
           <p className="text-3xl font-bold text-green-600 mt-1">{stats.active}</p>
         </div>
-        <div className="border border-border bg-white p-5">
+        <div className="card text-center">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Design Files</p>
           <p className="text-3xl font-bold text-primary-600 mt-1">{stats.totalFiles}</p>
         </div>
       </div>
 
       {/* Active / Archived switcher */}
-      <div className="flex rounded-lg border border-gray-200 overflow-hidden w-fit mb-6">
-        <button
-          onClick={() => setTab('active')}
-          className={`px-4 py-1.5 text-sm font-medium transition-colors ${
-            tab === 'active'
-              ? 'bg-primary-500 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          Active
-        </button>
-        <button
-          onClick={() => setTab('archived')}
-          className={`px-4 py-1.5 text-sm font-medium transition-colors ${
-            tab === 'archived'
-              ? 'bg-primary-500 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          Archived
-        </button>
-      </div>
+      <SegmentedControl
+        ariaLabel="Project list"
+        options={[
+          { value: 'active', label: 'Active' },
+          { value: 'archived', label: 'Archived' },
+        ]}
+        value={tab}
+        onChange={(v) => setTab(v)}
+        className="mb-6"
+      />
 
       {projects && projects.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -161,7 +150,7 @@ export default function Dashboard() {
           ))}
         </div>
       ) : (
-        <div className="border border-border bg-white py-12 px-6 text-center">
+        <div className="card text-center py-12 px-6">
           <svg
             className="w-10 h-10 text-gray-300 mx-auto mb-4"
             fill="none"

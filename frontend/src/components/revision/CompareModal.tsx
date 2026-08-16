@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { compareVersions } from '../../api/endpoints/files';
 import Modal from '../ui/Modal';
+import Icon from '../ui/icons';
+import SegmentedControl from '../ui/SegmentedControl';
 import Spinner from '../ui/Spinner';
 import type { DesignFile, FileVersion } from '../../types';
 
@@ -30,20 +32,35 @@ export default function CompareModal({ file, from, to, onClose }: CompareModalPr
   const toUrl = result?.to?.download_url;
 
   return (
-    <Modal isOpen onClose={onClose} size="lg" title={`Compare v${from.version_number} → v${to.version_number}`}>
+    <Modal
+      isOpen
+      onClose={onClose}
+      size="lg"
+      title={`Compare v${from.version_number} → v${to.version_number}`}
+    >
       <div className="space-y-4">
         {/* Revision metadata beside the comparison (T4) */}
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div className="rounded-lg border border-gray-100 p-3">
             <p className="font-semibold text-gray-900 mb-1">v{from.version_number}</p>
-            {from.name && <p className="text-gray-700">📌 {from.name}</p>}
-            {from.revision_message && <p className="italic text-gray-600">"{from.revision_message}"</p>}
+            {from.name && (
+              <p className="text-gray-700 flex items-center gap-1">
+                <Icon name="pin" className="w-3.5 h-3.5" /> {from.name}
+              </p>
+            )}
+            {from.revision_message && (
+              <p className="italic text-gray-600">"{from.revision_message}"</p>
+            )}
             <p className="text-gray-400 mt-1">{new Date(from.created_at).toLocaleString()}</p>
             {from.uploaded_by && <p className="text-gray-400">by {from.uploaded_by.name}</p>}
           </div>
           <div className="rounded-lg border border-gray-100 p-3">
             <p className="font-semibold text-gray-900 mb-1">v{to.version_number}</p>
-            {to.name && <p className="text-gray-700">📌 {to.name}</p>}
+            {to.name && (
+              <p className="text-gray-700 flex items-center gap-1">
+                <Icon name="pin" className="w-3.5 h-3.5" /> {to.name}
+              </p>
+            )}
             {to.revision_message && <p className="italic text-gray-600">"{to.revision_message}"</p>}
             <p className="text-gray-400 mt-1">{new Date(to.created_at).toLocaleString()}</p>
             {to.uploaded_by && <p className="text-gray-400">by {to.uploaded_by.name}</p>}
@@ -58,16 +75,36 @@ export default function CompareModal({ file, from, to, onClose }: CompareModalPr
 
         {!isLoading && result && !result.supported && (
           <div className="flex flex-col items-center gap-3 py-10 text-center text-gray-500">
-            <svg className="w-12 h-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-12 h-12 text-gray-300"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <p className="text-sm max-w-sm">{result.explanation}</p>
             {from.download_url && to.download_url && (
               <div className="flex gap-3">
-                <a href={from.download_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 underline text-sm">
+                <a
+                  href={from.download_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-600 underline text-sm"
+                >
                   Download v{from.version_number}
                 </a>
-                <a href={to.download_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 underline text-sm">
+                <a
+                  href={to.download_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-600 underline text-sm"
+                >
                   Download v{to.version_number}
                 </a>
               </div>
@@ -78,23 +115,17 @@ export default function CompareModal({ file, from, to, onClose }: CompareModalPr
         {!isLoading && result?.supported && (
           <>
             {(isImage || isPdf) && (
-              <div className="flex items-center gap-2">
-                <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-                  <button
-                    onClick={() => setMode('side')}
-                    className={`px-3 py-1.5 text-xs font-medium ${mode === 'side' ? 'bg-primary-500 text-white' : 'bg-white text-gray-600'}`}
-                  >
-                    Side by side
-                  </button>
-                  {isImage && (
-                    <button
-                      onClick={() => setMode('overlay')}
-                      className={`px-3 py-1.5 text-xs font-medium ${mode === 'overlay' ? 'bg-primary-500 text-white' : 'bg-white text-gray-600'}`}
-                    >
-                      Overlay
-                    </button>
-                  )}
-                </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <SegmentedControl
+                  ariaLabel="Comparison mode"
+                  size="sm"
+                  options={[
+                    { value: 'side', label: 'Side by side' },
+                    ...(isImage ? [{ value: 'overlay' as const, label: 'Overlay' }] : []),
+                  ]}
+                  value={mode}
+                  onChange={(v) => setMode(v)}
+                />
                 {isImage && mode === 'overlay' && (
                   <label className="flex items-center gap-2 text-xs text-gray-600">
                     Opacity
@@ -117,17 +148,33 @@ export default function CompareModal({ file, from, to, onClose }: CompareModalPr
                 <div>
                   <p className="text-xs font-medium text-gray-500 mb-1">v{from.version_number}</p>
                   {isImage ? (
-                    <img src={fromUrl} alt={`v${from.version_number}`} className="w-full rounded border border-gray-200" />
+                    <img
+                      src={fromUrl}
+                      alt={`v${from.version_number}`}
+                      className="w-full rounded border border-gray-200"
+                    />
                   ) : (
-                    <iframe src={fromUrl} title={`v${from.version_number}`} className="w-full h-96 border border-gray-200 rounded" />
+                    <iframe
+                      src={fromUrl}
+                      title={`v${from.version_number}`}
+                      className="w-full h-96 border border-gray-200 rounded"
+                    />
                   )}
                 </div>
                 <div>
                   <p className="text-xs font-medium text-gray-500 mb-1">v{to.version_number}</p>
                   {isImage ? (
-                    <img src={toUrl} alt={`v${to.version_number}`} className="w-full rounded border border-gray-200" />
+                    <img
+                      src={toUrl}
+                      alt={`v${to.version_number}`}
+                      className="w-full rounded border border-gray-200"
+                    />
                   ) : (
-                    <iframe src={toUrl} title={`v${to.version_number}`} className="w-full h-96 border border-gray-200 rounded" />
+                    <iframe
+                      src={toUrl}
+                      title={`v${to.version_number}`}
+                      className="w-full h-96 border border-gray-200 rounded"
+                    />
                   )}
                 </div>
               </div>

@@ -14,6 +14,7 @@ import InternalPanel from '../components/collaboration/InternalPanel';
 import ActivityTimeline from '../components/activity/ActivityTimeline';
 import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
+import SegmentedControl from '../components/ui/SegmentedControl';
 
 export default function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -117,7 +118,7 @@ export default function ProjectView() {
         <div className="flex items-center justify-between gap-3 mb-4">
           <button
             onClick={() => setTimelineOpen((v) => !v)}
-            className="flex items-center gap-2 text-lg font-semibold text-gray-900 text-left"
+            className="flex items-center gap-2 text-lg font-semibold text-gray-900 text-left cursor-pointer hover:text-gray-700"
           >
             <svg
               className={`w-4 h-4 transition-transform ${timelineOpen ? 'rotate-90' : ''}`}
@@ -132,28 +133,15 @@ export default function ProjectView() {
               {milestones?.length ?? 0} milestones
             </span>
           </button>
-          <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-            <button
-              onClick={() => setViewMode('timeline')}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                viewMode === 'timeline'
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              Timeline
-            </button>
-            <button
-              onClick={() => setViewMode('board')}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                viewMode === 'board'
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              Board
-            </button>
-          </div>
+          <SegmentedControl
+            ariaLabel="Milestone view"
+            options={[
+              { value: 'timeline', label: 'Timeline' },
+              { value: 'board', label: 'Board' },
+            ]}
+            value={viewMode}
+            onChange={(v) => setViewMode(v)}
+          />
         </div>
         {timelineOpen &&
           (viewMode === 'board' ? (

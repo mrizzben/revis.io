@@ -92,7 +92,7 @@ export default function Register() {
           <p className="text-sm text-gray-500">Create your account</p>
         </div>
 
-        <div className="border border-border bg-white p-6">
+        <div className="card p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">
@@ -101,15 +101,16 @@ export default function Register() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">I am a...</label>
-              <div className="flex gap-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">I am a...</label>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setRole('architect')}
-                  className={`flex-1 py-2 px-3 text-sm font-medium border ${
+                  aria-pressed={role === 'architect'}
+                  className={`flex items-center justify-center py-2 px-3 text-sm font-medium rounded-lg border cursor-pointer transition-colors ${
                     role === 'architect'
-                      ? 'bg-primary-50 border-primary-500 text-primary-700'
-                      : 'bg-white border-border text-gray-700'
+                      ? 'bg-primary-50 border-primary-500 text-primary-700 ring-1 ring-primary-500'
+                      : 'bg-white border-border text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   Architect
@@ -117,10 +118,11 @@ export default function Register() {
                 <button
                   type="button"
                   onClick={() => setRole('client')}
-                  className={`flex-1 py-2 px-3 text-sm font-medium border ${
+                  aria-pressed={role === 'client'}
+                  className={`flex items-center justify-center py-2 px-3 text-sm font-medium rounded-lg border cursor-pointer transition-colors ${
                     role === 'client'
-                      ? 'bg-primary-50 border-primary-500 text-primary-700'
-                      : 'bg-white border-border text-gray-700'
+                      ? 'bg-primary-50 border-primary-500 text-primary-700 ring-1 ring-primary-500'
+                      : 'bg-white border-border text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   Client

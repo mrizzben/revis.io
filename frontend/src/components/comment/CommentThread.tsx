@@ -1,7 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Comment } from '../../types';
-import { listComments, createComment, updateComment, deleteComment } from '../../api/endpoints/comments';
+import {
+  listComments,
+  createComment,
+  updateComment,
+  deleteComment,
+} from '../../api/endpoints/comments';
 import CommentItem from './CommentItem';
 import CommentForm from './CommentForm';
 
@@ -94,19 +98,6 @@ export default function CommentThread({
     }
   };
 
-  const findReplyToName = (parentId: number): string => {
-    if (!comments) return '';
-    const find = (list: Comment[]): string | null => {
-      for (const c of list) {
-        if (c.id === parentId) return c.author.name;
-        const found = find(c.replies || []);
-        if (found) return found;
-      }
-      return null;
-    };
-    return find(comments) || '';
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-4 py-2">
@@ -122,8 +113,18 @@ export default function CommentThread({
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
-        <svg className="w-10 h-10 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        <svg
+          className="w-10 h-10 text-gray-300 mb-2"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+          />
         </svg>
         <p className="text-sm text-gray-500">Failed to load comments</p>
         <button
@@ -142,15 +143,22 @@ export default function CommentThread({
 
   return (
     <div className="space-y-4">
-      <CommentForm
-        onSubmit={handleCreate}
-        isLoading={submitting && replyingTo === null}
-      />
+      <CommentForm onSubmit={handleCreate} isLoading={submitting && replyingTo === null} />
 
       {isEmpty ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <svg className="w-10 h-10 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          <svg
+            className="w-10 h-10 text-gray-300 mb-2"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
           </svg>
           <p className="text-sm text-gray-500">No comments yet. Be the first to share feedback.</p>
         </div>

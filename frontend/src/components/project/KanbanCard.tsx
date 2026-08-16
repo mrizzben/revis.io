@@ -21,7 +21,7 @@ const FILE_TYPE_COLORS: Record<string, string> = {
 /** Presentational card body shared by the static card and the drag overlay. */
 function CardBody({ file, className = '' }: { file: DesignFile; className?: string }) {
   return (
-    <div className={`border border-border bg-white ${className}`}>
+    <div className={`card p-0 overflow-hidden ${className}`}>
       <div className="aspect-square bg-gray-100 relative border-b border-border overflow-hidden">
         <FileThumbnail file={file} size="small" />
       </div>

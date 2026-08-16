@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as filesApi from '../../api/endpoints/files';
 import Badge from '../ui/Badge';
+import Icon from '../ui/icons';
 import FileThumbnail from './FileThumbnail';
 import FileViewer from './FileViewer';
 import type { DesignFile } from '../../types';
@@ -97,7 +98,7 @@ export default function FileList({
 
   if (!files || files.length === 0) {
     return (
-      <div className="border border-border bg-white py-8 text-center">
+      <div className="card text-center py-8">
         <svg
           className="w-10 h-10 text-gray-300 mx-auto mb-3"
           fill="none"
@@ -120,11 +121,7 @@ export default function FileList({
   }
 
   const renderFileCard = (file: DesignFile) => (
-    <div
-      key={file.id}
-      className="border border-border bg-white hover:border-primary-300 transition-colors cursor-pointer group"
-      onClick={() => handleViewFile(file)}
-    >
+    <div key={file.id} className="card-interactive group" onClick={() => handleViewFile(file)}>
       <div className="aspect-square bg-gray-100 relative border-b border-border overflow-hidden">
         <FileThumbnail file={file} size="medium" />
       </div>
@@ -143,7 +140,7 @@ export default function FileList({
         {file.comment_count != null && file.comment_count > 0 && (
           <div className="mt-1">
             <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-              💬 {file.comment_count}
+              <Icon name="chat" className="w-3.5 h-3.5" /> {file.comment_count}
             </span>
           </div>
         )}
@@ -163,7 +160,7 @@ export default function FileList({
               e.stopPropagation();
               if (confirm('Delete this file?')) deleteMutation.mutate(file.id);
             }}
-            className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="text-gray-400 hover:text-red-500 opacity-50 group-hover:opacity-100 transition-opacity cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -185,7 +182,7 @@ export default function FileList({
         <div className="flex items-center mb-4 gap-2">
           <label className="text-sm text-gray-600 font-medium">Filter:</label>
           <select
-            className="border border-border px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-primary-500"
+            className="input-field w-auto"
             value={selectedMilestoneId ?? ''}
             onChange={(e) => {
               const val = e.target.value;

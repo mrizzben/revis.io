@@ -27,15 +27,22 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
 
   return (
     <div
-      className={`flex items-center justify-between px-4 py-3 border animate-fade-in ${typeStyles[toast.type]}`}
+      role="status"
+      className={`flex items-center justify-between px-4 py-3 border rounded-lg shadow-card animate-slide-up ${typeStyles[toast.type]}`}
     >
       <span className="text-sm">{toast.message}</span>
       <button
         onClick={() => onDismiss(toast.id)}
-        className="ml-3 text-current opacity-50 hover:opacity-100"
+        aria-label="Dismiss notification"
+        className="ml-3 text-current opacity-50 hover:opacity-100 cursor-pointer rounded p-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-current"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
         </svg>
       </button>
     </div>
@@ -58,13 +65,18 @@ export default function ToastContainer() {
   // Expose addToast globally for store integration
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__addToast = addToast;
-    return () => { delete (window as unknown as Record<string, unknown>).__addToast; };
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__addToast;
+    };
   }, [addToast]);
 
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-[100] flex flex-col space-y-2 max-w-sm w-full">
+    <div
+      aria-live="polite"
+      className="fixed top-4 right-4 z-[100] flex flex-col space-y-2 max-w-sm w-full px-4 sm:px-0"
+    >
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onDismiss={dismissToast} />
       ))}
