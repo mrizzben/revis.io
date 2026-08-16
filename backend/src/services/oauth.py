@@ -63,7 +63,8 @@ async def exchange_code_for_tokens(code: str) -> dict:
         ) from exc
     if resp.status_code != 200:
         logger.warning(
-            "Google token exchange rejected", extra={"status": resp.status_code, "body": resp.text[:200]}
+            "Google token exchange rejected",
+            extra={"status": resp.status_code, "body": resp.text[:200]},
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -129,10 +129,9 @@ async def test_callback_creates_new_user(oauth_client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_callback_links_existing_email(
-    oauth_client, db_session, test_architect, monkeypatch
-):
+async def test_callback_links_existing_email(oauth_client, db_session, test_architect, monkeypatch):
     """Google login with an already-registered email logs into that account."""
+
     async def _existing_userinfo(access_token: str) -> dict:
         return {"email": test_architect.email, "name": "Test Architect"}
 

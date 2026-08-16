@@ -120,7 +120,10 @@ async def register(
         role=request.role,
         invitation_token=request.invitation_token,
     )
-    return {"id": user.id, "message": "Registration successful. Check your email to verify your account."}
+    return {
+        "id": user.id,
+        "message": "Registration successful. Check your email to verify your account.",
+    }
 
 
 @router.post("/login")
