@@ -18,34 +18,10 @@ const FILE_TYPE_COLORS: Record<string, string> = {
   stl: 'bg-orange-100 text-orange-700',
 };
 
-interface KanbanCardProps {
-  file: DesignFile;
-  disabled?: boolean;
-  onClick?: () => void;
-}
-
-export default function KanbanCard({ file, disabled = false, onClick }: KanbanCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: file.id,
-    data: { file, milestoneId: file.milestone_id },
-    disabled,
-  });
-
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }
-    : undefined;
-
+/** Presentational card body shared by the static card and the drag overlay. */
+function CardBody({ file, className = '' }: { file: DesignFile; className?: string }) {
   return (
-    <div
-      ref={disabled ? undefined : setNodeRef}
-      {...(disabled ? {} : listeners)}
-      {...(disabled ? {} : attributes)}
-      onClick={onClick}
-      className={`border border-border bg-white hover:bg-gray-50 transition-colors cursor-pointer group ${
-        disabled ? '' : 'cursor-grab active:cursor-grabbing'
-      } ${isDragging && !disabled ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
-      style={style}
-    >
+    <div className={`border border-border bg-white ${className}`}>
       <div className="aspect-square bg-gray-100 relative border-b border-border overflow-hidden">
         <FileThumbnail file={file} size="small" />
       </div>
@@ -60,6 +36,47 @@ export default function KanbanCard({ file, disabled = false, onClick }: KanbanCa
           <span className="text-xs text-gray-400">v{file.version_number}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Card rendered inside the drag overlay, tracking the cursor. */
+export function KanbanCardOverlay({ file }: { file: DesignFile }) {
+  return (
+    <div className="w-[240px] rotate-3 shadow-lg shadow-gray-400/40 select-none pointer-events-none">
+      <CardBody file={file} className="ring-2 ring-primary-500" />
+    </div>
+  );
+}
+
+interface KanbanCardProps {
+  file: DesignFile;
+  disabled?: boolean;
+  onClick?: () => void;
+}
+
+export default function KanbanCard({ file, disabled = false, onClick }: KanbanCardProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: file.id,
+    data: { file, milestoneId: file.milestone_id },
+    disabled,
+  });
+
+  return (
+    <div
+      ref={disabled ? undefined : setNodeRef}
+      {...(disabled ? {} : listeners)}
+      {...(disabled ? {} : attributes)}
+      onClick={onClick}
+      className={`group ${
+        disabled
+          ? ''
+          : isDragging
+            ? 'opacity-30 cursor-grabbing'
+            : 'cursor-grab active:cursor-grabbing'
+      }`}
+    >
+      <CardBody file={file} className="transition-colors hover:bg-gray-50" />
     </div>
   );
 }
