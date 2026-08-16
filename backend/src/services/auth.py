@@ -1,13 +1,12 @@
 """Authentication service: registration, login, token management, password reset."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.config import settings
 from src.core.security import (
     create_access_token,
     create_refresh_token,
@@ -24,12 +23,6 @@ from src.services.notification import (
 )
 
 logger = logging.getLogger(__name__)
-from src.models.project import Invitation, ProjectMember
-from src.models.user import EmailVerification, PasswordReset, User, UserRole
-from src.services.notification import (
-    send_password_reset_email,
-    send_verification_email,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +109,7 @@ async def _validate_and_consume_invitation(
             detail="This invitation has already been used",
         )
 
-    if invitation.expires_at < datetime.now(timezone.utc):
+    if invitation.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This invitation has expired",
@@ -150,7 +143,7 @@ async def login_user(
             detail="Invalid email or password",
         )
 
-    if not verify_password(password, user.hashed_password):
+    if not user.hashed_password or not verify_password(password, user.hashed_password):
         logger.warning("Login failed: invalid password", extra={"user_id": user.id})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -178,11 +171,11 @@ async def refresh_access_token(
     """Validate a refresh token and issue a new access token."""
     try:
         payload = decode_token(refresh_token)
-    except Exception:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
-        )
+        ) from exc
 
     if payload.get("type") != "refresh":
         raise HTTPException(
@@ -221,7 +214,7 @@ async def create_email_verification(
     verification = EmailVerification(
         user_id=user.id,
         token=token,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+        expires_at=datetime.now(UTC) + timedelta(hours=24),
     )
     db.add(verification)
     await db.commit()
@@ -242,7 +235,7 @@ async def verify_email(db: AsyncSession, token: str) -> User:
             detail="Invalid verification token",
         )
 
-    if verification.expires_at < datetime.now(timezone.utc):
+    if verification.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification token has expired",
@@ -275,7 +268,7 @@ async def forgot_password(db: AsyncSession, email: str) -> None:
     reset = PasswordReset(
         user_id=user.id,
         token=token,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
     )
     db.add(reset)
     await db.commit()
@@ -300,7 +293,7 @@ async def reset_password(
             detail="Invalid or expired reset token",
         )
 
-    if reset.expires_at < datetime.now(timezone.utc):
+    if reset.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset token has expired",
