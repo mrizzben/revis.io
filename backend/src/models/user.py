@@ -10,6 +10,7 @@ from src.models.base import Base
 
 
 class UserRole(str, enum.Enum):
+    admin = "admin"
     architect = "architect"
     client = "client"
 

@@ -27,6 +27,12 @@ class Project(Base):
         Integer, ForeignKey("firms.id", ondelete="SET NULL"), nullable=True
     )
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Client secure-link access (no sign-up): owner/admin sets a password,
+    # client enters it on the /client-access/<token> page to get a scoped session.
+    client_token: Mapped[str | None] = mapped_column(
+        String(64), unique=True, nullable=True, index=True
+    )
+    client_password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

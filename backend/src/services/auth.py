@@ -1,13 +1,12 @@
 """Authentication service: registration, login, token management, password reset."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.config import settings
 from src.core.security import (
     create_access_token,
     create_refresh_token,
@@ -24,12 +23,6 @@ from src.services.notification import (
 )
 
 logger = logging.getLogger(__name__)
-from src.models.project import Invitation, ProjectMember
-from src.models.user import EmailVerification, PasswordReset, User, UserRole
-from src.services.notification import (
-    send_password_reset_email,
-    send_verification_email,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +43,14 @@ async def register_user(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A user with this email already exists",
+        )
+
+    # The guest-*@revis.io namespace is reserved for per-project anonymous
+    # client identities (secure-link access, no sign-up).
+    if email.lower().endswith("@revis.io") and email.lower().startswith("guest-"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This email address is reserved",
         )
 
     user_role = UserRole(role)
@@ -116,7 +117,7 @@ async def _validate_and_consume_invitation(
             detail="This invitation has already been used",
         )
 
-    if invitation.expires_at < datetime.now(timezone.utc):
+    if invitation.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This invitation has expired",
@@ -182,7 +183,7 @@ async def refresh_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
-        )
+        ) from None
 
     if payload.get("type") != "refresh":
         raise HTTPException(
@@ -196,12 +197,19 @@ async def refresh_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token: missing subject",
         )
+    try:
+        subject = int(user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: malformed subject",
+        ) from None
 
     # Note: We don't look up the user here since we don't have a db session.
     # The access token will contain the user_id which is validated on next request.
     # For proper token rotation, you'd store refresh tokens in a database.
     access_token = create_access_token(
-        subject=int(user_id),
+        subject=subject,
         role=payload.get("role", "architect"),
         firm_id=payload.get("firm_id"),
     )
@@ -221,7 +229,7 @@ async def create_email_verification(
     verification = EmailVerification(
         user_id=user.id,
         token=token,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+        expires_at=datetime.now(UTC) + timedelta(hours=24),
     )
     db.add(verification)
     await db.commit()
@@ -242,7 +250,7 @@ async def verify_email(db: AsyncSession, token: str) -> User:
             detail="Invalid verification token",
         )
 
-    if verification.expires_at < datetime.now(timezone.utc):
+    if verification.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification token has expired",
@@ -275,7 +283,7 @@ async def forgot_password(db: AsyncSession, email: str) -> None:
     reset = PasswordReset(
         user_id=user.id,
         token=token,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
     )
     db.add(reset)
     await db.commit()
@@ -300,7 +308,7 @@ async def reset_password(
             detail="Invalid or expired reset token",
         )
 
-    if reset.expires_at < datetime.now(timezone.utc):
+    if reset.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset token has expired",
