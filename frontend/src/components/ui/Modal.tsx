@@ -15,7 +15,14 @@ const sizeStyles = {
   lg: 'max-w-2xl',
 };
 
-export default function Modal({ isOpen, onClose, title, children, size = 'md', fullScreenMobile = false }: ModalProps) {
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  size = 'md',
+  fullScreenMobile = false,
+}: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -28,13 +35,17 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', f
       // Move focus into the dialog for keyboard/screen-reader users
       const panel = panelRef.current;
       if (panel) {
-        const focusTarget = panel.querySelector<HTMLElement>('button, input, select, textarea, [tabindex]');
+        const focusTarget = panel.querySelector<HTMLElement>(
+          'button, input, select, textarea, [tabindex]',
+        );
         (focusTarget ?? panel).focus();
       }
     } else {
       document.body.style.overflow = '';
     }
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -73,7 +84,9 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', f
     <div
       ref={overlayRef}
       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 ${fullScreenMobile ? 'p-0 sm:p-4' : 'p-4'}`}
-      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+      onClick={(e) => {
+        if (e.target === overlayRef.current) onClose();
+      }}
     >
       <div
         ref={panelRef}
@@ -84,14 +97,21 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', f
       >
         {title && (
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <h2 id={titleId.current} className="text-base font-semibold text-gray-900">{title}</h2>
+            <h2 id={titleId.current} className="text-base font-semibold text-gray-900">
+              {title}
+            </h2>
             <button
               onClick={onClose}
               aria-label="Close dialog"
               className="p-1.5 -mr-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>

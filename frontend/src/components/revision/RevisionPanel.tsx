@@ -43,7 +43,12 @@ export default function RevisionPanel({
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(true);
   const [editing, setEditing] = useState<FileVersion | null>(null);
-  const [metaForm, setMetaForm] = useState<{ name: string; description: string; revision_message: string; milestone_id: number | '' }>({
+  const [metaForm, setMetaForm] = useState<{
+    name: string;
+    description: string;
+    revision_message: string;
+    milestone_id: number | '';
+  }>({
     name: '',
     description: '',
     revision_message: '',
@@ -161,9 +166,7 @@ export default function RevisionPanel({
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-900">
-                      v{v.version_number}
-                    </span>
+                    <span className="text-sm font-semibold text-gray-900">v{v.version_number}</span>
                     <Badge className={badge.className}>{badge.label}</Badge>
                     {isCurrent && <Badge variant="info">Current</Badge>}
                     {v.restored_from_superseded && (
@@ -221,7 +224,9 @@ export default function RevisionPanel({
                       className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
                       placeholder="Change message"
                       value={metaForm.revision_message}
-                      onChange={(e) => setMetaForm({ ...metaForm, revision_message: e.target.value })}
+                      onChange={(e) =>
+                        setMetaForm({ ...metaForm, revision_message: e.target.value })
+                      }
                     />
                     {milestones && (
                       <select
@@ -236,7 +241,9 @@ export default function RevisionPanel({
                       >
                         <option value="">No milestone</option>
                         {milestones.map((m) => (
-                          <option key={m.id} value={m.id}>{m.name}</option>
+                          <option key={m.id} value={m.id}>
+                            {m.name}
+                          </option>
                         ))}
                       </select>
                     )}
@@ -298,7 +305,9 @@ export default function RevisionPanel({
                           <button
                             className="text-xs text-amber-700 hover:underline disabled:opacity-40"
                             disabled={busy}
-                            onClick={() => reviewStateMutation.mutate({ v: v.version_number, inReview: true })}
+                            onClick={() =>
+                              reviewStateMutation.mutate({ v: v.version_number, inReview: true })
+                            }
                           >
                             Send to internal review
                           </button>
@@ -307,7 +316,9 @@ export default function RevisionPanel({
                           <button
                             className="text-xs text-gray-600 hover:underline disabled:opacity-40"
                             disabled={busy}
-                            onClick={() => reviewStateMutation.mutate({ v: v.version_number, inReview: false })}
+                            onClick={() =>
+                              reviewStateMutation.mutate({ v: v.version_number, inReview: false })
+                            }
                           >
                             Back to draft
                           </button>
@@ -326,7 +337,11 @@ export default function RevisionPanel({
                             className="text-xs text-gray-500 hover:underline disabled:opacity-40"
                             disabled={busy}
                             onClick={() => {
-                              if (confirm('Archive this revision? It will be hidden from normal views.')) {
+                              if (
+                                confirm(
+                                  'Archive this revision? It will be hidden from normal views.',
+                                )
+                              ) {
                                 archiveMutation.mutate(v.version_number);
                               }
                             }}

@@ -35,7 +35,7 @@ export default function Login() {
       const tokens = await authApi.login(email, password);
       storeLogin(tokens.access_token, null);
       const user = await apiClient.get('/users/me', {
-        headers: { Authorization: `Bearer ${tokens.access_token}` }
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
       });
       storeLogin(tokens.access_token, user.data);
 
@@ -80,9 +80,18 @@ export default function Login() {
       <div className="max-w-sm w-full">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <svg className="w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            <svg
+              className="w-8 h-8 text-primary-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+              />
             </svg>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Revis.io</h1>
           </div>
@@ -99,7 +108,10 @@ export default function Login() {
           {verifyToken && !verified && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-sm text-blue-700">
               Click &ldquo;Verify Email&rdquo; below to activate your account.
-              <button onClick={handleVerifyEmail} className="ml-2 underline font-medium cursor-pointer">
+              <button
+                onClick={handleVerifyEmail}
+                className="ml-2 underline font-medium cursor-pointer"
+              >
                 Verify Email
               </button>
             </div>
@@ -118,7 +130,9 @@ export default function Login() {
                 Enter your account email and we&apos;ll send you a reset link.
               </p>
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
+                <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">
+                  {error}
+                </div>
               )}
               {forgotSent ? (
                 <div className="p-3 bg-green-50 border border-green-200 text-sm text-green-700">
@@ -155,7 +169,9 @@ export default function Login() {
           ) : (
             <>
               {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-sm text-red-700">
+                  {error}
+                </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -186,7 +202,10 @@ export default function Login() {
 
               <div className="mt-6 text-center text-sm space-y-2">
                 <p>
-                  <Link to="/register" className="text-primary-600 hover:text-primary-500 font-medium">
+                  <Link
+                    to="/register"
+                    className="text-primary-600 hover:text-primary-500 font-medium"
+                  >
                     Register as an architect
                   </Link>
                 </p>

@@ -45,7 +45,13 @@ export default function TodoCard({ todo, projectId }: TodoCardProps) {
             aria-label={isComplete ? 'Mark as open' : 'Mark as complete'}
           >
             {isComplete && (
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             )}

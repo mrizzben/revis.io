@@ -121,11 +121,7 @@ export default function FileList({
   }
 
   const renderFileCard = (file: DesignFile) => (
-    <div
-      key={file.id}
-      className="card-interactive group"
-      onClick={() => handleViewFile(file)}
-    >
+    <div key={file.id} className="card-interactive group" onClick={() => handleViewFile(file)}>
       <div className="aspect-square bg-gray-100 relative border-b border-border overflow-hidden">
         <FileThumbnail file={file} size="medium" />
       </div>

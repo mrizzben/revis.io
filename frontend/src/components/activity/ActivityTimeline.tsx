@@ -105,13 +105,17 @@ export default function ActivityTimeline({ projectId }: ActivityTimelineProps) {
               (payload.milestone_id ? `Milestone ${payload.milestone_id}` : null) ||
               null;
             return (
-              <div key={event.id} className="flex gap-3 py-2.5 border-b border-gray-50 last:border-0">
+              <div
+                key={event.id}
+                className="flex gap-3 py-2.5 border-b border-gray-50 last:border-0"
+              >
                 <span className="text-gray-400 mt-0.5 flex-shrink-0">
                   <Icon name={icon} className="w-4 h-4" />
                 </span>
                 <div className="min-w-0">
                   <p className="text-sm text-gray-800">
-                    <span className="font-medium">{event.actor?.name ?? 'Someone'}</span> {label.toLowerCase()}
+                    <span className="font-medium">{event.actor?.name ?? 'Someone'}</span>{' '}
+                    {label.toLowerCase()}
                     {detail ? <span className="text-gray-500"> — {detail}</span> : null}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">{relativeTime(event.created_at)}</p>
