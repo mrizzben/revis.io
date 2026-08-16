@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { compareVersions } from '../../api/endpoints/files';
 import Modal from '../ui/Modal';
+import Icon from '../ui/icons';
 import Spinner from '../ui/Spinner';
 import type { DesignFile, FileVersion } from '../../types';
 
@@ -36,14 +37,14 @@ export default function CompareModal({ file, from, to, onClose }: CompareModalPr
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div className="rounded-lg border border-gray-100 p-3">
             <p className="font-semibold text-gray-900 mb-1">v{from.version_number}</p>
-            {from.name && <p className="text-gray-700">📌 {from.name}</p>}
+            {from.name && <p className="text-gray-700 flex items-center gap-1"><Icon name="pin" className="w-3.5 h-3.5" /> {from.name}</p>}
             {from.revision_message && <p className="italic text-gray-600">"{from.revision_message}"</p>}
             <p className="text-gray-400 mt-1">{new Date(from.created_at).toLocaleString()}</p>
             {from.uploaded_by && <p className="text-gray-400">by {from.uploaded_by.name}</p>}
           </div>
           <div className="rounded-lg border border-gray-100 p-3">
             <p className="font-semibold text-gray-900 mb-1">v{to.version_number}</p>
-            {to.name && <p className="text-gray-700">📌 {to.name}</p>}
+            {to.name && <p className="text-gray-700 flex items-center gap-1"><Icon name="pin" className="w-3.5 h-3.5" /> {to.name}</p>}
             {to.revision_message && <p className="italic text-gray-600">"{to.revision_message}"</p>}
             <p className="text-gray-400 mt-1">{new Date(to.created_at).toLocaleString()}</p>
             {to.uploaded_by && <p className="text-gray-400">by {to.uploaded_by.name}</p>}

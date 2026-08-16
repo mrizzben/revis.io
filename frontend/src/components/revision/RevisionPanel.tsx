@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as filesApi from '../../api/endpoints/files';
 import Badge from '../ui/Badge';
+import Icon from '../ui/icons';
 import Spinner from '../ui/Spinner';
 import type { DesignFile, FileVersion } from '../../types';
 
@@ -176,7 +177,9 @@ export default function RevisionPanel({
 
                 <div className="mt-1 text-xs text-gray-600 space-y-0.5">
                   {v.name && (
-                    <p className="font-medium text-gray-800">📌 {v.name}</p>
+                    <p className="font-medium text-gray-800 flex items-center gap-1">
+                      <Icon name="pin" className="w-3.5 h-3.5" /> {v.name}
+                    </p>
                   )}
                   {v.description && <p>{v.description}</p>}
                   {v.revision_message && <p className="italic">"{v.revision_message}"</p>}

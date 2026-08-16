@@ -23,32 +23,39 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 text-sm font-medium
-           hover:bg-primary-700 focus:outline-none focus:ring-2
-           focus:ring-primary-500 focus:ring-offset-1
-           disabled:opacity-40 disabled:cursor-not-allowed
+    @apply inline-flex items-center justify-center gap-2
+           bg-primary-600 text-white px-4 py-2 text-sm font-medium
+           min-h-10 rounded-lg cursor-pointer select-none
+           hover:bg-primary-700 active:bg-primary-800
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500
+           focus-visible:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed
            transition-colors duration-150;
   }
 
   .btn-secondary {
-    @apply bg-white text-gray-700 px-4 py-2 text-sm font-medium
-           border border-border hover:bg-gray-50
-           focus:outline-none focus:ring-2 focus:ring-primary-500
-           focus:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed
+    @apply inline-flex items-center justify-center gap-2
+           bg-white text-gray-700 px-4 py-2 text-sm font-medium
+           min-h-10 rounded-lg cursor-pointer select-none
+           border border-border hover:bg-gray-50 hover:border-gray-300
+           active:bg-gray-100
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500
+           focus-visible:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed
            transition-colors duration-150;
   }
 
   .btn-danger {
-    @apply bg-red-600 text-white px-4 py-2 text-sm font-medium
-           hover:bg-red-700 focus:outline-none focus:ring-2
-           focus:ring-red-500 focus:ring-offset-1
-           disabled:opacity-40 disabled:cursor-not-allowed
+    @apply inline-flex items-center justify-center gap-2
+           bg-red-600 text-white px-4 py-2 text-sm font-medium
+           min-h-10 rounded-lg cursor-pointer select-none
+           hover:bg-red-700 active:bg-red-800
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500
+           focus-visible:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed
            transition-colors duration-150;
   }
 
   .input-field {
-    @apply w-full px-3 py-2 border border-border text-sm
-           placeholder-gray-400 bg-white
+    @apply w-full px-3 py-2 border border-border text-base text-gray-900
+           placeholder-gray-400 bg-white rounded-lg
            focus:outline-none focus:border-primary-500
            focus:ring-1 focus:ring-primary-500
            disabled:bg-gray-100 disabled:cursor-not-allowed
@@ -56,7 +63,14 @@
   }
 
   .card {
-    @apply bg-white border border-border p-5;
+    @apply bg-white border border-border rounded-xl shadow-card p-5;
+  }
+
+  .card-interactive {
+    @apply bg-white border border-border rounded-xl shadow-card
+           transition-all duration-200 cursor-pointer
+           hover:border-primary-300 hover:shadow-card-hover
+           focus-within:ring-2 focus-within:ring-primary-500;
   }
 }
 
@@ -76,5 +90,17 @@
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: theme('colors.gray.300');
+  }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

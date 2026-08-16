@@ -47,16 +47,17 @@ export default {
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
         'xs': ['0.75rem', { lineHeight: '1rem' }],
-        'sm': ['0.8125rem', { lineHeight: '1.25rem' }],
-        'base': ['0.875rem', { lineHeight: '1.375rem' }],
-        'lg': ['1rem', { lineHeight: '1.5rem' }],
-        'xl': ['1.125rem', { lineHeight: '1.625rem' }],
-        '2xl': ['1.375rem', { lineHeight: '1.875rem' }],
-        '3xl': ['1.75rem', { lineHeight: '2.25rem' }],
+        'sm': ['0.875rem', { lineHeight: '1.25rem' }],
+        'base': ['1rem', { lineHeight: '1.5rem' }],
+        'lg': ['1.125rem', { lineHeight: '1.625rem' }],
+        'xl': ['1.25rem', { lineHeight: '1.75rem' }],
+        '2xl': ['1.5rem', { lineHeight: '2rem' }],
+        '3xl': ['1.875rem', { lineHeight: '2.375rem' }],
       },
-      spacing: {
-        '18': '4.5rem',
-        '22': '5.5rem',
+      boxShadow: {
+        card: '0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06)',
+        'card-hover': '0 4px 12px -2px rgb(15 23 42 / 0.10), 0 2px 4px -2px rgb(15 23 42 / 0.06)',
+        popover: '0 10px 30px -6px rgb(15 23 42 / 0.16), 0 2px 6px -2px rgb(15 23 42 / 0.06)',
       },
       animation: {
         'fade-in': 'fadeIn 0.15s ease-in-out',

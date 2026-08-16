@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as filesApi from '../../api/endpoints/files';
 import Badge from '../ui/Badge';
+import Icon from '../ui/icons';
 import FileThumbnail from './FileThumbnail';
 import FileViewer from './FileViewer';
 import type { DesignFile } from '../../types';
@@ -143,7 +144,7 @@ export default function FileList({
         {file.comment_count != null && file.comment_count > 0 && (
           <div className="mt-1">
             <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-              💬 {file.comment_count}
+              <Icon name="chat" className="w-3.5 h-3.5" /> {file.comment_count}
             </span>
           </div>
         )}

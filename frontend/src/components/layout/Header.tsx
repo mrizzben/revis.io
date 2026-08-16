@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { listNotifications, markNotificationRead, markAllNotificationsRead } from '../../api/endpoints/notifications';
+import Icon, { type IconName } from '../ui/icons';
 import type { Notification } from '../../types';
 
 function relativeTime(iso: string): string {
@@ -18,14 +19,14 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
-function notificationIcon(type: Notification['type']): string {
-  switch (type) {
-    case 'file_uploaded': return '📄';
-    case 'milestone_completed': return '✅';
-    case 'comment_replied': return '💬';
-    case 'invitation_received': return '✉️';
-  }
-}
+const NOTIFICATION_ICONS: Record<Notification['type'], IconName> = {
+  file_uploaded: 'document',
+  milestone_completed: 'check-circle',
+  comment_replied: 'chat',
+  invitation_received: 'envelope',
+  mention: 'at-symbol',
+  todo_assigned: 'clipboard-check',
+};
 
 export default function Header() {
   const { user, logout } = useAuthStore();
@@ -111,21 +112,23 @@ export default function Header() {
               <div className="relative" ref={bellRef}>
                 <button
                   onClick={handleBellClick}
-                  className="relative p-2 text-gray-500 hover:text-gray-700 focus:outline-none hover:bg-gray-100 transition-colors"
+                  aria-label={bellOpen ? 'Close notifications' : 'Notifications'}
+                  aria-expanded={bellOpen}
+                  className="relative p-2 rounded-lg text-gray-500 hover:text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round"
                       d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center font-bold">
+                    <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] w-4.5 h-4.5 min-w-[18px] px-1 flex items-center justify-center font-bold rounded-full">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
 
                 {bellOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-border z-50">
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-border rounded-xl shadow-popover z-50">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                       <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
                       <button
@@ -154,7 +157,9 @@ export default function Header() {
                             className={`w-full text-left p-3 hover:bg-gray-50 cursor-pointer border-b border-border last:border-0 ${n.is_read ? 'border-l-2 border-l-transparent' : 'border-l-2 border-l-primary-500'}`}
                           >
                             <div className="flex items-start gap-3">
-                              <span className="text-lg flex-shrink-0 mt-0.5">{notificationIcon(n.type)}</span>
+                              <span className="flex-shrink-0 mt-0.5 text-gray-400">
+                                <Icon name={NOTIFICATION_ICONS[n.type]} className="w-5 h-5" />
+                              </span>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-medium text-gray-900">{n.title}</p>
                                 {n.body && (
@@ -174,9 +179,11 @@ export default function Header() {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsOpen(!isOpen)}
-                  className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 focus:outline-none"
+                  aria-expanded={isOpen}
+                  aria-haspopup="menu"
+                  className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg"
                 >
-                  <div className="w-7 h-7 bg-primary-100 flex items-center justify-center">
+                  <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center">
                     <span className="text-primary-700 text-xs font-medium">
                       {user.name.charAt(0).toUpperCase()}
                     </span>
@@ -185,7 +192,7 @@ export default function Header() {
                 </button>
 
                 {isOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-border py-1 z-50">
+                  <div role="menu" className="absolute right-0 mt-2 w-48 bg-white border border-border rounded-xl shadow-popover py-1 z-50">
                     <div className="px-4 py-2 border-b border-border">
                       <p className="text-sm font-medium text-gray-900">{user.name}</p>
                       <p className="text-xs text-gray-500 hidden sm:block">{user.email}</p>

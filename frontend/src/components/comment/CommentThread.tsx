@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Comment } from '../../types';
 import { listComments, createComment, updateComment, deleteComment } from '../../api/endpoints/comments';
 import CommentItem from './CommentItem';
 import CommentForm from './CommentForm';
@@ -92,19 +91,6 @@ export default function CommentThread({
     } catch {
       // silent
     }
-  };
-
-  const findReplyToName = (parentId: number): string => {
-    if (!comments) return '';
-    const find = (list: Comment[]): string | null => {
-      for (const c of list) {
-        if (c.id === parentId) return c.author.name;
-        const found = find(c.replies || []);
-        if (found) return found;
-      }
-      return null;
-    };
-    return find(comments) || '';
   };
 
   if (isLoading) {
