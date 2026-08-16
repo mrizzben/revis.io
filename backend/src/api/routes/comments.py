@@ -19,6 +19,11 @@ async def list_comments(
     db: DBSession,
     current_user: User = Depends(get_current_participant),
 ):
+    from src.services import file as file_service
+    from src.services import project as project_service
+
+    file = await file_service.get_file(db, file_id)
+    await project_service._get_project_with_access(db, file.project_id, current_user)
     return await CommentService.list_comments(db, file_id)
 
 
