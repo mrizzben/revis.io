@@ -88,9 +88,7 @@ async def list_projects(
         projects = list(result.scalars().all())
     elif user.role == UserRole.admin:
         # Admin is the app superuser: sees every project.
-        result = await db.execute(
-            select(Project).where(Project.is_archived == include_archived)
-        )
+        result = await db.execute(select(Project).where(Project.is_archived == include_archived))
         projects = list(result.scalars().all())
     elif user.role == UserRole.architect:
         # Architects see projects they own or firm projects
@@ -283,7 +281,9 @@ async def _get_project_with_access(
             # Anonymous client session: scoped to exactly this project, and
             # only while the owner/admin has client access enabled.
             if client_project_id != project_id or project.client_token is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+                )
         else:
             member_result = await db.execute(
                 select(ProjectMember).where(
@@ -292,7 +292,9 @@ async def _get_project_with_access(
                 )
             )
             if not member_result.scalar_one_or_none():
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+                )
 
     return project
 
@@ -534,11 +536,15 @@ async def authenticate_client_access(
     result = await db.execute(select(Project).where(Project.client_token == token))
     project = result.scalar_one_or_none()
     if not project or project.client_password_hash is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid link or password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid link or password"
+        )
     if project.is_archived:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Project is archived")
     if not verify_password(password, project.client_password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid link or password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid link or password"
+        )
     guest = await ensure_project_guest_user(db, project)
     await db.commit()
     return project, guest

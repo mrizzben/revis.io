@@ -100,9 +100,7 @@ async def _validate_and_consume_invitation(
     token: str,
 ) -> None:
     """Validate an invitation token and grant project access to the new client."""
-    result = await db.execute(
-        select(Invitation).where(Invitation.token == token)
-    )
+    result = await db.execute(select(Invitation).where(Invitation.token == token))
     invitation = result.scalar_one_or_none()
 
     if not invitation:
@@ -239,9 +237,7 @@ async def create_email_verification(
 
 async def verify_email(db: AsyncSession, token: str) -> User:
     """Verify a user's email using the verification token."""
-    result = await db.execute(
-        select(EmailVerification).where(EmailVerification.token == token)
-    )
+    result = await db.execute(select(EmailVerification).where(EmailVerification.token == token))
     verification = result.scalar_one_or_none()
 
     if not verification or verification.is_used:
@@ -258,9 +254,7 @@ async def verify_email(db: AsyncSession, token: str) -> User:
 
     verification.is_used = True
 
-    result = await db.execute(
-        select(User).where(User.id == verification.user_id)
-    )
+    result = await db.execute(select(User).where(User.id == verification.user_id))
     user = result.scalar_one_or_none()
     if user:
         user.is_verified = True
@@ -297,9 +291,7 @@ async def reset_password(
     new_password: str,
 ) -> None:
     """Reset a user's password using a valid reset token."""
-    result = await db.execute(
-        select(PasswordReset).where(PasswordReset.token == token)
-    )
+    result = await db.execute(select(PasswordReset).where(PasswordReset.token == token))
     reset = result.scalar_one_or_none()
 
     if not reset or reset.is_used:
@@ -316,9 +308,7 @@ async def reset_password(
 
     reset.is_used = True
 
-    result = await db.execute(
-        select(User).where(User.id == reset.user_id)
-    )
+    result = await db.execute(select(User).where(User.id == reset.user_id))
     user = result.scalar_one_or_none()
     if user:
         user.hashed_password = hash_password(new_password)

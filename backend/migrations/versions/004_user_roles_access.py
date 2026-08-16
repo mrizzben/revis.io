@@ -27,15 +27,9 @@ def upgrade() -> None:
     # client_token: unguessable link token (the "secure link").
     # client_password_hash: password the owner/admin sets; the client
     # enters it on the link page to get a scoped session (no sign-up).
-    op.execute(
-        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS client_token VARCHAR(64) UNIQUE"
-    )
-    op.execute(
-        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS client_password_hash VARCHAR(255)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_projects_client_token ON projects(client_token)"
-    )
+    op.execute("ALTER TABLE projects ADD COLUMN IF NOT EXISTS client_token VARCHAR(64) UNIQUE")
+    op.execute("ALTER TABLE projects ADD COLUMN IF NOT EXISTS client_password_hash VARCHAR(255)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_projects_client_token ON projects(client_token)")
 
 
 def downgrade() -> None:

@@ -48,7 +48,6 @@ def is_architect_role(role: UserRole) -> bool:
     return role in (UserRole.admin, UserRole.architect)
 
 
-
 async def get_token_payload(
     credentials: BearerToken,
 ) -> dict:

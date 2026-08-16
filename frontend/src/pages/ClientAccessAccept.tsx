@@ -87,16 +87,26 @@ export default function ClientAccessAccept() {
       <div className="card max-w-md w-full">
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            <svg
+              className="w-8 h-8 text-primary-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
             </svg>
           </div>
 
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Client Access</h2>
           {info && (
             <p className="text-gray-600">
-              You have been invited to review <strong className="text-primary-600">{info.project_name}</strong>
+              You have been invited to review{' '}
+              <strong className="text-primary-600">{info.project_name}</strong>
             </p>
           )}
         </div>
@@ -117,7 +127,8 @@ export default function ClientAccessAccept() {
           />
 
           <div className="text-xs text-gray-500">
-            No account needed. Enter the password shared by the project owner to view and comment on designs.
+            No account needed. Enter the password shared by the project owner to view and comment on
+            designs.
           </div>
 
           <Button type="submit" isLoading={isSubmitting} className="w-full">

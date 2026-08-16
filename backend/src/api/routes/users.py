@@ -21,7 +21,9 @@ async def get_me(
         "id": current_user.id,
         "email": current_user.email,
         "name": current_user.name,
-        "role": current_user.role.value if hasattr(current_user.role, 'value') else current_user.role,
+        "role": current_user.role.value
+        if hasattr(current_user.role, "value")
+        else current_user.role,
         "firm_id": current_user.firm_id,
         "is_firm_admin": current_user.is_firm_admin,
         "is_verified": current_user.is_verified,

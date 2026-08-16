@@ -88,4 +88,5 @@ def decode_token(token: str) -> dict[str, Any]:
 def create_url_safe_token(length: int = 32) -> str:
     """Create a URL-safe random token for invitations, email verification, etc."""
     import secrets
+
     return secrets.token_urlsafe(length)

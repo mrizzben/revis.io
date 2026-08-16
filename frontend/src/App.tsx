@@ -27,38 +27,38 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/invitation/:token" element={<InvitationAccept />} />
-          <Route path="/client-access/:token" element={<ClientAccessAccept />} />
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/invitation/:token" element={<InvitationAccept />} />
+            <Route path="/client-access/:token" element={<ClientAccessAccept />} />
 
-          {/* Protected routes */}
-          <Route
-            element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/project/:projectId" element={<ProjectView />} />
+            {/* Protected routes */}
             <Route
-              path="/project/:projectId/manage"
               element={
-                <ProtectedRoute requiredRole="architect">
-                  <ProjectManage />
+                <ProtectedRoute>
+                  <AppLayout />
                 </ProtectedRoute>
               }
-            />
-          </Route>
+            >
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/project/:projectId" element={<ProjectView />} />
+              <Route
+                path="/project/:projectId/manage"
+                element={
+                  <ProtectedRoute requiredRole="architect">
+                    <ProjectManage />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
 
-          {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
+            {/* Default redirect */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }

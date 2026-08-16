@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import {
-  configureClientAccess,
-  disableClientAccess,
-} from '../../api/endpoints/clientAccess';
+import { configureClientAccess, disableClientAccess } from '../../api/endpoints/clientAccess';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 
@@ -99,10 +96,22 @@ export default function ClientAccessCard({ projectId }: ClientAccessCardProps) {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" type="button" onClick={handleRegenerate} isLoading={isLoading}>
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
+              onClick={handleRegenerate}
+              isLoading={isLoading}
+            >
               Regenerate link
             </Button>
-            <Button variant="danger" size="sm" type="button" onClick={handleDisable} isLoading={isLoading}>
+            <Button
+              variant="danger"
+              size="sm"
+              type="button"
+              onClick={handleDisable}
+              isLoading={isLoading}
+            >
               Disable
             </Button>
           </div>

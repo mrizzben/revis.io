@@ -51,9 +51,7 @@ async def authenticate_client_access(
     The resulting JWT carries ``client_project_id``: it only grants access to
     that one project (view, comment, review, approve) until it expires.
     """
-    project, guest = await project_service.authenticate_client_access(
-        db, data.token, data.password
-    )
+    project, guest = await project_service.authenticate_client_access(db, data.token, data.password)
     access_token = create_access_token(
         subject=guest.id,
         role="client",

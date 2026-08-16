@@ -9,7 +9,7 @@ interface User {
   firm_id: number | null;
   is_firm_admin: boolean;
   is_verified: boolean;
-  client_project_id: number | null;  // scoped session (secure link, no sign-up)
+  client_project_id: number | null; // scoped session (secure link, no sign-up)
   created_at: string;
 }
 
