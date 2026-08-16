@@ -8,6 +8,13 @@
     font-family: theme('fontFamily.sans');
   }
 
+  /* Native buttons default to cursor:default in browsers; restore pointer so
+     every clickable element offers the expected affordance. Disabled buttons
+     still get cursor-not-allowed via their component classes. */
+  button:not(:disabled) {
+    @apply cursor-pointer;
+  }
+
   h1 {
     @apply text-2xl font-bold tracking-tight;
   }

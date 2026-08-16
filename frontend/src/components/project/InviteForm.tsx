@@ -28,7 +28,7 @@ export default function InviteForm({ projectId }: InviteFormProps) {
   };
 
   return (
-    <div className="border border-border bg-white p-5">
+    <div className="card">
       <h2 className="text-base font-semibold mb-3">Invite Client</h2>
       <p className="text-sm text-gray-500 mb-4">
         Send an invitation email to a client.

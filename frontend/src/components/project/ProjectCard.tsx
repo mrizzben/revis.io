@@ -20,7 +20,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
     : `/project/${project.id}`;
 
   return (
-    <Link to={linkTo} className="border border-border bg-white hover:border-primary-300 transition-colors block group">
+    <Link to={linkTo} className="card-interactive block group overflow-hidden">
       <div className="p-4">
         <div className="flex items-start justify-between mb-3">
           <h3 className="text-base font-semibold text-gray-900 group-hover:text-primary-600 transition-colors truncate">
