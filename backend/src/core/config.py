@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     EMAIL_FROM: str = "noreply@revis.io.dev"
 
+    # Google OAuth (sign in / sign up with Google). Empty client id disables OAuth.
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
+
     # Frontend
     FRONTEND_URL: str = "http://localhost:5173"
 

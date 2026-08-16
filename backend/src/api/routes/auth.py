@@ -1,19 +1,23 @@
-"""Auth routes: registration, login, token refresh, password reset, email verification."""
+"""Auth routes: registration, login, token refresh, password reset, email verification, Google OAuth."""
 
-from fastapi import APIRouter, Depends, Form, Request, Response, status
-from fastapi.responses import JSONResponse
+import logging
+import secrets
 
-from src.api.dependencies import DBSession, get_current_user
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse, RedirectResponse
+
+from src.api.dependencies import DBSession
 from src.core.config import settings
 from src.core.rate_limit import RateLimiter
-from src.models.user import User
 from src.schemas.user import (
     ForgotPasswordRequest,
-    LoginRequest,
     RegisterRequest,
     ResetPasswordRequest,
 )
 from src.services import auth as auth_service
+from src.services import oauth as oauth_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -21,6 +25,83 @@ login_limiter = RateLimiter(max_requests=5, window_seconds=60)
 register_limiter = RateLimiter(max_requests=3, window_seconds=3600)
 forgot_password_limiter = RateLimiter(max_requests=3, window_seconds=3600)
 reset_password_limiter = RateLimiter(max_requests=5, window_seconds=3600)
+oauth_callback_limiter = RateLimiter(max_requests=10, window_seconds=3600)
+
+
+@router.get("/google/authorize")
+async def google_authorize(response: Response):
+    """Start Google OAuth: set a state cookie and redirect to Google's consent screen."""
+    if not oauth_service.oauth_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google OAuth is not configured",
+        )
+
+    state = secrets.token_urlsafe(32)
+    response.set_cookie(
+        key="oauth_state",
+        value=state,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=600,  # 10 minutes: enough for the consent round-trip
+        path="/api/auth/google",
+    )
+    return RedirectResponse(oauth_service.build_google_auth_url(state), status_code=302)
+
+
+@router.get("/google/callback")
+async def google_callback(
+    request: Request,
+    db: DBSession,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    _rate: None = Depends(oauth_callback_limiter),
+):
+    """Handle Google's redirect: verify state, exchange the code, log in or sign up."""
+    if error:
+        logger.warning("Google OAuth error", extra={"error": error})
+        return _oauth_error_redirect("google_oauth_failed")
+
+    expected_state = request.cookies.get("oauth_state")
+    if not state or not expected_state or not secrets.compare_digest(state, expected_state):
+        logger.warning("Google OAuth state mismatch")
+        return _oauth_error_redirect("invalid_state")
+
+    if not code:
+        return _oauth_error_redirect("google_oauth_failed")
+
+    try:
+        tokens = await oauth_service.exchange_code_for_tokens(code)
+        access_token = tokens.get("access_token")
+        if not access_token:
+            return _oauth_error_redirect("google_oauth_failed")
+        profile = await oauth_service.fetch_google_userinfo(access_token)
+        user, _created = await oauth_service.login_or_create_google_user(db, profile)
+        tokens = await oauth_service.issue_tokens(user)
+    except HTTPException:
+        return _oauth_error_redirect("google_oauth_failed")
+
+    response = RedirectResponse(
+        f"{settings.FRONTEND_URL}/oauth/callback#access_token={tokens['access_token']}&token_type=bearer",
+        status_code=302,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens["refresh_token"],
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/api/auth",
+    )
+    return response
+
+
+def _oauth_error_redirect(error_code: str) -> RedirectResponse:
+    """Redirect back to the SPA login page with an error code."""
+    return RedirectResponse(f"{settings.FRONTEND_URL}/login?error={error_code}", status_code=302)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
