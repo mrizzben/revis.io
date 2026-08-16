@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
 import Skeleton from '../components/ui/Skeleton';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import ProjectCard from '../components/project/ProjectCard';
 import type { CreateProjectRequest } from '../types';
 
@@ -131,28 +132,16 @@ export default function Dashboard() {
       </div>
 
       {/* Active / Archived switcher */}
-      <div className="flex rounded-lg border border-gray-200 overflow-hidden w-fit mb-6">
-        <button
-          onClick={() => setTab('active')}
-          className={`px-4 py-1.5 text-sm font-medium transition-colors ${
-            tab === 'active'
-              ? 'bg-primary-500 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          Active
-        </button>
-        <button
-          onClick={() => setTab('archived')}
-          className={`px-4 py-1.5 text-sm font-medium transition-colors ${
-            tab === 'archived'
-              ? 'bg-primary-500 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          Archived
-        </button>
-      </div>
+      <SegmentedControl
+        ariaLabel="Project list"
+        options={[
+          { value: 'active', label: 'Active' },
+          { value: 'archived', label: 'Archived' },
+        ]}
+        value={tab}
+        onChange={(v) => setTab(v)}
+        className="mb-6"
+      />
 
       {projects && projects.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

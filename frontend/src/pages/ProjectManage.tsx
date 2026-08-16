@@ -21,6 +21,7 @@ import OptionsPanel from '../components/options/OptionsPanel';
 import ActivityTimeline from '../components/activity/ActivityTimeline';
 import DangerZone from '../components/project/DangerZone';
 import Badge from '../components/ui/Badge';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import useAuthStore from '../stores/authStore';
 import { listCollaborators } from '../api/endpoints/collaborators';
 import type { Milestone } from '../types';
@@ -224,28 +225,15 @@ export default function ProjectManage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold">Milestones</h2>
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-              <button
-                onClick={() => setViewMode('timeline')}
-                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                  viewMode === 'timeline'
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                Timeline
-              </button>
-              <button
-                onClick={() => setViewMode('board')}
-                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                  viewMode === 'board'
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                Board
-              </button>
-            </div>
+            <SegmentedControl
+              ariaLabel="Milestone view"
+              options={[
+                { value: 'timeline', label: 'Timeline' },
+                { value: 'board', label: 'Board' },
+              ]}
+              value={viewMode}
+              onChange={(v) => setViewMode(v)}
+            />
           </div>
           <Button onClick={handleOpenCreateMilestone}>Add Milestone</Button>
         </div>

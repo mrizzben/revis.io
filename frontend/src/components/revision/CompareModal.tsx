@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { compareVersions } from '../../api/endpoints/files';
 import Modal from '../ui/Modal';
 import Icon from '../ui/icons';
+import SegmentedControl from '../ui/SegmentedControl';
 import Spinner from '../ui/Spinner';
 import type { DesignFile, FileVersion } from '../../types';
 
@@ -79,23 +80,17 @@ export default function CompareModal({ file, from, to, onClose }: CompareModalPr
         {!isLoading && result?.supported && (
           <>
             {(isImage || isPdf) && (
-              <div className="flex items-center gap-2">
-                <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-                  <button
-                    onClick={() => setMode('side')}
-                    className={`px-3 py-1.5 text-xs font-medium ${mode === 'side' ? 'bg-primary-500 text-white' : 'bg-white text-gray-600'}`}
-                  >
-                    Side by side
-                  </button>
-                  {isImage && (
-                    <button
-                      onClick={() => setMode('overlay')}
-                      className={`px-3 py-1.5 text-xs font-medium ${mode === 'overlay' ? 'bg-primary-500 text-white' : 'bg-white text-gray-600'}`}
-                    >
-                      Overlay
-                    </button>
-                  )}
-                </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <SegmentedControl
+                  ariaLabel="Comparison mode"
+                  size="sm"
+                  options={[
+                    { value: 'side', label: 'Side by side' },
+                    ...(isImage ? [{ value: 'overlay' as const, label: 'Overlay' }] : []),
+                  ]}
+                  value={mode}
+                  onChange={(v) => setMode(v)}
+                />
                 {isImage && mode === 'overlay' && (
                   <label className="flex items-center gap-2 text-xs text-gray-600">
                     Opacity
