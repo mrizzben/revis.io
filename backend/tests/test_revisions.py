@@ -4,9 +4,15 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import selectinload
 
-from src.models.file import RevisionVisibility
+from src.models.file import DesignFile, FileVersion, RevisionVisibility, ScanStatus, ThumbnailStatus
+from src.models.milestone import Milestone
 from src.models.project import Project, ProjectMember
+from src.models.user import User
+from src.services import file as file_service
 
 
 @pytest.fixture
@@ -314,10 +320,6 @@ async def test_compare_supported_revisions(
 async def test_compare_unsupported_format_explains_not_available(
     client, auth_headers, project, test_architect, db_session, fake_s3
 ):
-    import uuid
-
-    from src.models.file import DesignFile, FileVersion, ScanStatus, ThumbnailStatus
-
     file = DesignFile(
         id=uuid.uuid4(),
         project_id=project.id,
@@ -382,3 +384,67 @@ async def test_client_cannot_compare_internal_revisions(
         headers=client_auth_headers,
     )
     assert resp.status_code == 404
+
+
+async def test_project_payload_survives_version_with_milestone(
+    db_session, engine, project, test_architect
+):
+    """Regression: a version attached to a milestone must not break the file payload.
+
+    build_version_payload used to lazy-load FileVersion.milestone, raising
+    MissingGreenlet on a fresh session (production has one session per request)
+    and 500ing GET /projects/{id} right after an upload into a milestone.
+    """
+    m = Milestone(project_id=project.id, name="Phase 1", position=0)
+    db_session.add(m)
+    await db_session.commit()
+    await db_session.refresh(m)
+
+    f = DesignFile(
+        id=uuid.uuid4(),
+        project_id=project.id,
+        milestone_id=m.id,
+        uploaded_by_id=test_architect.id,
+        filename="plan.pdf",
+        file_type="pdf",
+        content_type="application/pdf",
+        file_size=13,
+        s3_key=f"uploads/{project.id}/{uuid.uuid4()}/plan.pdf",
+        thumbnail_status=ThumbnailStatus.pending,
+    )
+    db_session.add(f)
+    await db_session.flush()
+    v = FileVersion(
+        file_id=f.id,
+        version_number=1,
+        s3_key=f.s3_key,
+        file_size=13,
+        uploaded_by_id=test_architect.id,
+        visibility=RevisionVisibility.internal,
+        scan_status=ScanStatus.clean,
+        milestone_id=m.id,
+    )
+    db_session.add(v)
+    await db_session.flush()
+    f.current_version_id = v.id
+    await db_session.commit()
+    file_id = f.id
+
+    # Fresh session, mirroring production's one-session-per-request. Load the
+    # file the way the project-detail route does; the milestone is NOT in the
+    # identity map, so a lazy load would raise MissingGreenlet.
+    maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with maker() as fresh:
+        file = (
+            await fresh.execute(
+                select(DesignFile)
+                .options(
+                    selectinload(DesignFile.uploaded_by), selectinload(DesignFile.design_option)
+                )
+                .where(DesignFile.id == file_id)
+            )
+        ).scalar_one()
+        user = (await fresh.execute(select(User).where(User.id == test_architect.id))).scalar_one()
+
+        payload = await file_service.build_file_payload(fresh, file, user)
+        assert payload["current_version"]["milestone_name"] == "Phase 1"

@@ -827,7 +827,12 @@ async def get_version(
     file = await get_file(db, file_id)
     result = await db.execute(
         select(FileVersion)
-        .options(selectinload(FileVersion.uploaded_by))
+        .options(
+            selectinload(FileVersion.uploaded_by),
+            selectinload(FileVersion.milestone),
+            selectinload(FileVersion.issued_by),
+            selectinload(FileVersion.file),
+        )
         .where(
             FileVersion.file_id == file.id,
             FileVersion.version_number == version_number,
@@ -848,7 +853,12 @@ async def list_versions(
     file = await get_file(db, file_id)
     stmt = (
         select(FileVersion)
-        .options(selectinload(FileVersion.uploaded_by))
+        .options(
+            selectinload(FileVersion.uploaded_by),
+            selectinload(FileVersion.milestone),
+            selectinload(FileVersion.issued_by),
+            selectinload(FileVersion.file),
+        )
         .where(FileVersion.file_id == file.id)
     )
     if not include_archived:
@@ -867,7 +877,12 @@ async def list_client_versions(
     file = await get_file(db, file_id)
     result = await db.execute(
         select(FileVersion)
-        .options(selectinload(FileVersion.uploaded_by))
+        .options(
+            selectinload(FileVersion.uploaded_by),
+            selectinload(FileVersion.milestone),
+            selectinload(FileVersion.issued_by),
+            selectinload(FileVersion.file),
+        )
         .where(
             FileVersion.file_id == file.id,
             FileVersion.visibility.in_(CLIENT_VISIBLE_VISIBILITIES),
