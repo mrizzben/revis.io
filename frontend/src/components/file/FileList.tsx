@@ -186,7 +186,7 @@ export default function FileList({
         <div className="flex items-center mb-4 gap-2">
           <label className="text-sm text-gray-600 font-medium">Filter:</label>
           <select
-            className="border border-border px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-primary-500"
+            className="input-field w-auto"
             value={selectedMilestoneId ?? ''}
             onChange={(e) => {
               const val = e.target.value;
