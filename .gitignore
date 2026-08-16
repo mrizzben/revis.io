@@ -48,7 +48,7 @@ htmlcov/
 # Docker
 .docker/
 
-# MinIO data (dev)
+# RustFS data (dev)
 data/
 
 # Agent tooling configs / skills (local, not part of the app)

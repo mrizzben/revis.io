@@ -4,7 +4,7 @@
 
 ## Prerequisites
 
-- Running revis.io stack (see root `docker-compose.yml` — backend on `:8000`, frontend on `:5173`, PostgreSQL, MinIO).
+- Running revis.io stack (see root `docker-compose.yml` — backend on `:8000`, frontend on `:5173`, PostgreSQL, RustFS).
 - Python 3.12 (backend), Node.js 20+ (frontend).
 
 ## Setup & Run

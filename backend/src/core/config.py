@@ -23,9 +23,11 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
 
-    # S3 / MinIO
+    # S3 / RustFS
     S3_ENDPOINT: str | None = None
-    S3_PRESIGNED_ENDPOINT: str | None = None  # External endpoint for presigned URLs (browser-facing)
+    S3_PRESIGNED_ENDPOINT: str | None = (
+        None  # External endpoint for presigned URLs (browser-facing)
+    )
     S3_ACCESS_KEY: str = ""
     S3_SECRET_KEY: str = ""
     S3_BUCKET: str = "revis.io"
@@ -53,4 +55,4 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 
 
-settings = Settings()
+settings = Settings()  # pyright: ignore[reportCallIssue]  # SECRET_KEY/DATABASE_URL come from .env via pydantic-settings

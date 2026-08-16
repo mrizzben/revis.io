@@ -36,25 +36,27 @@ docker compose up -d
 ```
 
 The app will be available at:
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **MinIO Console**: http://localhost:9001 (dev S3)
+
+- **Frontend**: <http://localhost:5173>
+- **Backend API**: <http://localhost:8000>
+- **API Docs**: <http://localhost:8000/docs>
+- **RustFS Console**: <http://localhost:9001> (dev S3)
 
 ### Services Started
 
 | Service | Port | Purpose |
-|---------|------|---------|
+| --------- | ------ | --------- |
 | `frontend` | 5173 | React SPA (Vite dev server) |
 | `backend` | 8000 | FastAPI REST + WebSocket |
 | `worker` | — | ARQ task worker (thumbnails) |
 | `postgres` | 5432 | PostgreSQL metadata store |
 | `redis` | 6379 | ARQ task queue + WebSocket pub/sub |
-| `minio` | 9000/9001 | S3-compatible dev storage |
+| `rustfs` | 9000/9001 | S3-compatible dev storage |
 
 ### Manual Setup (Development)
 
 **Backend:**
+
 ```bash
 cd backend
 python3.12 -m venv .venv && source .venv/bin/activate
@@ -65,6 +67,7 @@ uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 **Frontend:**
+
 ```bash
 cd frontend
 npm install
@@ -87,6 +90,6 @@ cd frontend && npm test
 - `backend/`: Python FastAPI service with async ORM, S3 integration, WebSocket support
 - `frontend/`: TypeScript React SPA with reactive state management, real-time updates
 - `specs/`: Feature planning, research, and specification documents
-- `docker-compose.yml`: Local development environment with PostgreSQL, MinIO, and app services
+- `docker-compose.yml`: Local development environment with PostgreSQL, RustFS, and app services
 
 For more information on the project's governance and core principles, please refer to the [Constitution](.specify/memory/constitution.md).
