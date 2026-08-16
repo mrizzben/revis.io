@@ -222,7 +222,7 @@ async def create_email_verification(
     return verification
 
 
-async def verify_email(db: AsyncSession, token: str) -> User:
+async def verify_email(db: AsyncSession, token: str) -> User | None:
     """Verify a user's email using the verification token."""
     result = await db.execute(
         select(EmailVerification).where(EmailVerification.token == token)
