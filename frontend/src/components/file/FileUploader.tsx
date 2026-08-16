@@ -286,7 +286,7 @@ export default function FileUploader({
         <input
           ref={fileInputRef}
           type="file"
-          className="hidden"
+          className="sr-only"
           multiple
           accept={ALLOWED_EXTENSIONS.join(',')}
           onChange={(e) => e.target.files && handleFiles(e.target.files)}

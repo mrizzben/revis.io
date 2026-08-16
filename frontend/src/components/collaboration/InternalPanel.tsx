@@ -95,7 +95,7 @@ export default function InternalPanel({
 
       {tab === 'todos' && (
         <div>
-          <form onSubmit={handleCreateTodo} className="flex gap-2 mb-3">
+          <form onSubmit={handleCreateTodo} className="flex flex-col sm:flex-row gap-2 mb-3">
             <Input
               placeholder="New to-do…"
               value={todoTitle}

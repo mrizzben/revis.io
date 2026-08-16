@@ -109,7 +109,7 @@ export default function CollaboratorList({
   return (
     <div>
       {currentUserIsOwner && (
-        <form onSubmit={handleSubmit} className="flex gap-2 mb-3">
+        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 mb-3">
           <Input
             type="email"
             placeholder="Add teammate by email"
