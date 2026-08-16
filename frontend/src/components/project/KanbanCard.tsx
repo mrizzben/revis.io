@@ -46,7 +46,7 @@ export default function KanbanCard({ file, disabled = false, onClick }: KanbanCa
       } ${isDragging && !disabled ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
       style={style}
     >
-      <div className="aspect-[4/3] bg-gray-100 relative border-b border-border">
+      <div className="aspect-square bg-gray-100 relative border-b border-border overflow-hidden">
         <FileThumbnail file={file} size="small" />
       </div>
       <div className="p-2.5">

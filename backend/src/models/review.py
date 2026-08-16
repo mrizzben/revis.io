@@ -29,14 +29,10 @@ class Review(Base):
     revision_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("file_versions.id", ondelete="SET NULL"), nullable=True
     )
-    requested_by_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
-    reviewer_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    requested_by_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    reviewer_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     status: Mapped[ReviewStatus] = mapped_column(
-        Enum(ReviewStatus, name="review_status"),
+        Enum(ReviewStatus, name="review_status", native_enum=False, length=24),
         nullable=False,
         default=ReviewStatus.draft,
     )

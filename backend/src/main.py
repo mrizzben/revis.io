@@ -1,9 +1,8 @@
 """FastAPI application entry point."""
 
 import logging
-
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
 
 from fastapi import FastAPI, Query, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,22 +22,23 @@ set_manager(ws_manager)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> Any:
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan: startup and shutdown events."""
     setup_logging()
     logger = logging.getLogger(__name__)
     logger.info("Revis.io API starting")
-    
-    # Ensure MinIO bucket exists
+
+    # Ensure RustFS bucket exists
     from src.services.file import ensure_bucket_exists
+
     await ensure_bucket_exists()
-    
+
     yield
-    
+
     # Shutdown
-    await settings.close()
     logger.info("Revis.io API shutting down")
     from src.core.database import engine
+
     await engine.dispose()
 
 
@@ -72,13 +72,13 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         request.url.path,
         exc_info=True,
     )
-    
+
     # Create response
     response = JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"},
     )
-    
+
     # Add CORS headers
     origin = request.headers.get("origin")
     if origin and origin in settings.CORS_ORIGINS:
@@ -86,7 +86,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         response.headers["Access-Control-Allow-Credentials"] = "true"
     elif "*" in settings.CORS_ORIGINS:
         response.headers["Access-Control-Allow-Origin"] = "*"
-    
+
     return response
 
 

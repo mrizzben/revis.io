@@ -47,10 +47,7 @@ export async function completeMultipart(
   return response.data;
 }
 
-export async function abortMultipart(
-  uploadId: string,
-  key: string,
-): Promise<{ message: string }> {
+export async function abortMultipart(uploadId: string, key: string): Promise<{ message: string }> {
   const response = await apiClient.post(`/files/multipart/${uploadId}/abort`, { key });
   return response.data;
 }
@@ -88,20 +85,27 @@ export async function deleteFile(fileId: string): Promise<void> {
 }
 
 export async function getDownloadUrl(fileId: string): Promise<DownloadUrlResponse> {
-  const response = await apiClient.get(`/files/${fileId}/download`);
+  const response = await apiClient.get(`/files/${fileId}/download`, {
+    params: { return_url: true },
+  });
   return response.data;
+}
+
+export async function getPreviewUrl(fileId: string): Promise<string> {
+  const response = await apiClient.get(`/files/${fileId}/download`, {
+    params: { return_url: true, inline: true },
+  });
+  return response.data.url;
 }
 
 export async function getThumbnailUrl(
   fileId: string,
   size: 'small' | 'medium' = 'small',
 ): Promise<string> {
-  // Returns the redirect URL directly; browser follows 302
-  const response = await apiClient.get(`/files/${fileId}/thumbnail`, {
-    params: { size },
-    maxRedirects: 1,
+  const response = await apiClient.get<{ url: string }>(`/files/${fileId}/thumbnail`, {
+    params: { size, return_url: true },
   });
-  return response.request?.responseURL || '';
+  return response.data.url;
 }
 
 // ── Firms ────────────────────────────────────────────────
@@ -121,10 +125,7 @@ export async function getFirmMembers(firmId: number): Promise<User[]> {
   return response.data;
 }
 
-export async function addFirmMember(
-  firmId: number,
-  email: string,
-): Promise<{ message: string }> {
+export async function addFirmMember(firmId: number, email: string): Promise<{ message: string }> {
   const response = await apiClient.post(`/firms/${firmId}/members`, { email });
   return response.data;
 }
@@ -160,10 +161,7 @@ export async function downloadVersion(
   return response.data;
 }
 
-export async function restoreVersion(
-  fileId: string,
-  versionNumber: number,
-): Promise<FileVersion> {
+export async function restoreVersion(fileId: string, versionNumber: number): Promise<FileVersion> {
   const response = await apiClient.post(`/files/${fileId}/versions/${versionNumber}/restore`);
   return response.data;
 }
@@ -181,10 +179,7 @@ export async function supersedeVersion(
   return response.data;
 }
 
-export async function archiveVersion(
-  fileId: string,
-  versionNumber: number,
-): Promise<FileVersion> {
+export async function archiveVersion(fileId: string, versionNumber: number): Promise<FileVersion> {
   const response = await apiClient.post(`/files/${fileId}/versions/${versionNumber}/archive`);
   return response.data;
 }
@@ -194,7 +189,9 @@ export async function setVersionReview(
   versionNumber: number,
   inReview: boolean,
 ): Promise<FileVersion> {
-  const response = await apiClient.post(`/files/${fileId}/versions/${versionNumber}/review`, { in_review: inReview });
+  const response = await apiClient.post(`/files/${fileId}/versions/${versionNumber}/review`, {
+    in_review: inReview,
+  });
   return response.data;
 }
 

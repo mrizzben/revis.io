@@ -32,7 +32,7 @@ MULTIPART_THRESHOLD = 100 * 1024 * 1024  # 100 MB
 
 
 def _get_s3_client(use_presigned_endpoint: bool = False):
-    """Create a configured S3 client (or MinIO-compatible client).
+    """Create a configured S3 client (RustFS or any S3-compatible store).
 
     Args:
         use_presigned_endpoint: If True, use S3_PRESIGNED_ENDPOINT for generating
@@ -88,26 +88,20 @@ def _get_lazy_presigned_s3_client():
     return _s3_presigned_client
 
 
+def _presigned_endpoint() -> str | None:
+    """External/browser-facing endpoint used for presigned URLs."""
+    return settings.S3_PRESIGNED_ENDPOINT or settings.S3_ENDPOINT
+
+
 async def ensure_bucket_exists() -> None:
-    """Create the S3 bucket if it does not already exist."""
+    """Create the storage bucket if it does not already exist."""
     s3 = _get_lazy_s3_client()
     try:
         s3.head_bucket(Bucket=settings.S3_BUCKET)
     except Exception:
+        # RustFS has no SSE-S3 (AES256 bucket encryption); it encrypts at
+        # rest itself, so the bucket is created without extra configuration.
         s3.create_bucket(Bucket=settings.S3_BUCKET)
-        # Enable SSE-S3 encryption by default
-        s3.put_bucket_encryption(
-            Bucket=settings.S3_BUCKET,
-            ServerSideEncryptionConfiguration={
-                "Rules": [
-                    {
-                        "ApplyServerSideEncryptionByDefault": {
-                            "SSEAlgorithm": "AES256",
-                        },
-                    },
-                ],
-            },
-        )
 
 
 def validate_file_upload(
@@ -182,12 +176,12 @@ def create_presigned_upload_url(
             extra={
                 "key": key,
                 "error": str(e),
-                "endpoint": settings.S3_PRESIGNED_ENDPOINT or settings.S3_ENDPOINT,
+                "endpoint": _presigned_endpoint(),
             },
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Storage service unavailable. Please ensure MinIO is running.",
+            detail="Storage service unavailable. Please ensure the object store (RustFS) is running.",
         ) from e
 
 
@@ -223,12 +217,12 @@ def create_presigned_download_url(
             extra={
                 "key": key,
                 "error": str(e),
-                "endpoint": settings.S3_PRESIGNED_ENDPOINT or settings.S3_ENDPOINT,
+                "endpoint": _presigned_endpoint(),
             },
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Storage service unavailable. Please ensure MinIO is running.",
+            detail="Storage service unavailable. Please ensure the object store (RustFS) is running.",
         ) from e
 
 
@@ -240,7 +234,6 @@ def initiate_multipart_upload(key: str, content_type: str) -> str:
             Bucket=settings.S3_BUCKET,
             Key=key,
             ContentType=content_type,
-            ServerSideEncryption="AES256",
         )
         return response["UploadId"]
     except Exception as e:
@@ -250,7 +243,7 @@ def initiate_multipart_upload(key: str, content_type: str) -> str:
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Storage service unavailable. Please ensure MinIO is running.",
+            detail="Storage service unavailable. Please ensure the object store (RustFS) is running.",
         ) from e
 
 
@@ -308,7 +301,7 @@ def create_multipart_part_urls(
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Storage service unavailable. Please ensure MinIO is running.",
+            detail="Storage service unavailable. Please ensure the object store (RustFS) is running.",
         ) from e
 
 
@@ -338,7 +331,7 @@ def complete_multipart_upload(
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Storage service unavailable. Please ensure MinIO is running.",
+            detail="Storage service unavailable. Please ensure the object store (RustFS) is running.",
         ) from e
 
 
@@ -363,7 +356,7 @@ def abort_multipart_upload(key: str, upload_id: str) -> None:
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Storage service unavailable. Please ensure MinIO is running.",
+            detail="Storage service unavailable. Please ensure the object store (RustFS) is running.",
         ) from e
 
 
@@ -391,7 +384,7 @@ def get_thumbnail_presigned_url(key: str | None, expires_in: int = 300) -> str |
             extra={
                 "key": key,
                 "error": str(e),
-                "endpoint": settings.S3_PRESIGNED_ENDPOINT or settings.S3_ENDPOINT,
+                "endpoint": _presigned_endpoint(),
             },
         )
         # Don't raise - return None so caller can handle gracefully
@@ -413,7 +406,7 @@ def delete_s3_object(key: str) -> None:
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Storage service unavailable. Please ensure MinIO is running.",
+            detail="Storage service unavailable. Please ensure the object store (RustFS) is running.",
         ) from e
 
 
@@ -595,6 +588,7 @@ from src.models.file import (
 
 # ── Object integrity helpers (T8) ────────────────────────────
 
+
 def compute_object_hash(s3: Any, bucket: str, key: str) -> str:
     """Stream an object from S3 and return its SHA-256 hex digest.
 
@@ -643,7 +637,9 @@ def verify_content_mime(s3: Any, bucket: str, key: str, file_type: str) -> bool:
     if offset < 0 or not signature:
         return True
     try:
-        obj = s3.get_object(Bucket=bucket, Key=key, Range=f"bytes={offset}-{offset + len(signature) + 8}")
+        obj = s3.get_object(
+            Bucket=bucket, Key=key, Range=f"bytes={offset}-{offset + len(signature) + 8}"
+        )
         head = obj["Body"].read(len(signature) + 8)
         obj["Body"].close()
     except Exception as e:
@@ -666,7 +662,9 @@ def scan_object_with_clamd(s3: Any, bucket: str, key: str, file_size: int) -> Sc
 
     # clamd INSTREAM protocol: "zINSTREAM\0" then length-prefixed chunks, "0\0" to finish.
     try:
-        with socket.create_connection((settings.CLAMD_HOST, settings.CLAMD_PORT), timeout=60) as sock:
+        with socket.create_connection(
+            (settings.CLAMD_HOST, settings.CLAMD_PORT), timeout=60
+        ) as sock:
             sock.sendall(b"zINSTREAM\0")
             obj = s3.get_object(Bucket=bucket, Key=key)
             try:
@@ -699,6 +697,7 @@ def object_exists(s3: Any, bucket: str, key: str) -> bool:
 
 # ── Deduplication (T8: "detect duplicate uploads where practical") ──
 
+
 async def _find_version_with_hash(db: AsyncSession, content_hash: str) -> FileVersion | None:
     result = await db.execute(
         select(FileVersion)
@@ -727,11 +726,12 @@ async def _finalize_version(db: AsyncSession, version: FileVersion) -> FileVersi
             detail="Uploaded object not found in storage — the upload was interrupted. Please re-upload.",
         )
 
-    version.content_hash = compute_object_hash(s3, bucket, version.s3_key)
+    content_hash = compute_object_hash(s3, bucket, version.s3_key)
+    version.content_hash = content_hash
     version.mime_valid = verify_content_mime(s3, bucket, version.s3_key, file.file_type)
 
     # Dedupe: identical content already stored → reuse its immutable key.
-    existing = await _find_version_with_hash(db, version.content_hash)
+    existing = await _find_version_with_hash(db, content_hash)
     if existing is not None and str(existing.file_id) != str(version.file_id):
         try:
             s3.delete_object(Bucket=bucket, Key=version.s3_key)
@@ -818,6 +818,7 @@ async def create_revision(
 
 # ── Version accessors ────────────────────────────────────────
 
+
 async def get_version(
     db: AsyncSession,
     file_id: str,
@@ -826,7 +827,12 @@ async def get_version(
     file = await get_file(db, file_id)
     result = await db.execute(
         select(FileVersion)
-        .options(selectinload(FileVersion.uploaded_by))
+        .options(
+            selectinload(FileVersion.uploaded_by),
+            selectinload(FileVersion.milestone),
+            selectinload(FileVersion.issued_by),
+            selectinload(FileVersion.file),
+        )
         .where(
             FileVersion.file_id == file.id,
             FileVersion.version_number == version_number,
@@ -847,7 +853,12 @@ async def list_versions(
     file = await get_file(db, file_id)
     stmt = (
         select(FileVersion)
-        .options(selectinload(FileVersion.uploaded_by))
+        .options(
+            selectinload(FileVersion.uploaded_by),
+            selectinload(FileVersion.milestone),
+            selectinload(FileVersion.issued_by),
+            selectinload(FileVersion.file),
+        )
         .where(FileVersion.file_id == file.id)
     )
     if not include_archived:
@@ -866,7 +877,12 @@ async def list_client_versions(
     file = await get_file(db, file_id)
     result = await db.execute(
         select(FileVersion)
-        .options(selectinload(FileVersion.uploaded_by))
+        .options(
+            selectinload(FileVersion.uploaded_by),
+            selectinload(FileVersion.milestone),
+            selectinload(FileVersion.issued_by),
+            selectinload(FileVersion.file),
+        )
         .where(
             FileVersion.file_id == file.id,
             FileVersion.visibility.in_(CLIENT_VISIBLE_VISIBILITIES),
@@ -877,6 +893,7 @@ async def list_client_versions(
 
 
 # ── Lifecycle transitions (T2 / T7) ──────────────────────────
+
 
 def _issuable(version: FileVersion) -> bool:
     return version.visibility in (
@@ -901,7 +918,9 @@ async def issue_version(
     """
     version = await get_version(db, file_id, version_number)
     if not _issuable(version):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This revision cannot be issued")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="This revision cannot be issued"
+        )
     if version.scan_status == ScanStatus.infected:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -939,7 +958,9 @@ async def supersede_version(
     """Explicitly mark a revision superseded (kept, never deleted)."""
     version = await get_version(db, file_id, version_number)
     if version.visibility in (RevisionVisibility.archived, RevisionVisibility.internal):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This revision cannot be superseded")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="This revision cannot be superseded"
+        )
     version.visibility = RevisionVisibility.superseded
     version.superseded_at = datetime.now(UTC)
     version.superseded_by_id = actor.id
@@ -970,7 +991,9 @@ async def set_review_state(
     """Move a revision between internal draft and internal review (T2 states)."""
     version = await get_version(db, file_id, version_number)
     if version.visibility not in (RevisionVisibility.internal, RevisionVisibility.review):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only drafts can enter internal review")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Only drafts can enter internal review"
+        )
     version.visibility = RevisionVisibility.review if in_review else RevisionVisibility.internal
     await db.commit()
     await db.refresh(version)
@@ -1015,10 +1038,14 @@ async def restore_version(
     """
     version = await get_version(db, file_id, version_number)
     if version.visibility == RevisionVisibility.archived:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Archived revisions cannot be restored")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Archived revisions cannot be restored"
+        )
 
     file = await get_file(db, file_id)
-    previous_current = await db.get(FileVersion, file.current_version_id) if file.current_version_id else None
+    previous_current = (
+        await db.get(FileVersion, file.current_version_id) if file.current_version_id else None
+    )
 
     if version.visibility == RevisionVisibility.superseded:
         # Re-promote: it becomes the active client deliverable again.
@@ -1028,12 +1055,20 @@ async def restore_version(
         version.superseded_at = None
         version.superseded_by_id = None
         version.restored_from_superseded = True
-        if previous_current and previous_current.visibility == RevisionVisibility.client_issued and previous_current.id != version.id:
+        if (
+            previous_current
+            and previous_current.visibility == RevisionVisibility.client_issued
+            and previous_current.id != version.id
+        ):
             previous_current.visibility = RevisionVisibility.superseded
             previous_current.superseded_at = datetime.now(UTC)
             previous_current.superseded_by_id = actor.id
     elif version.visibility == RevisionVisibility.client_issued:
-        if previous_current and previous_current.visibility == RevisionVisibility.client_issued and previous_current.id != version.id:
+        if (
+            previous_current
+            and previous_current.visibility == RevisionVisibility.client_issued
+            and previous_current.id != version.id
+        ):
             previous_current.visibility = RevisionVisibility.superseded
             previous_current.superseded_at = datetime.now(UTC)
             previous_current.superseded_by_id = actor.id
@@ -1052,6 +1087,7 @@ async def restore_version(
 
 
 # ── Payload builders (role-aware) ───────────────────────────
+
 
 def _user_brief(user: Any) -> dict:
     return {
@@ -1181,12 +1217,18 @@ async def build_file_payload(
             "id": file.uploaded_by.id,
             "email": file.uploaded_by.email,
             "name": file.uploaded_by.name,
-            "role": file.uploaded_by.role.value if hasattr(file.uploaded_by.role, "value") else file.uploaded_by.role,
+            "role": file.uploaded_by.role.value
+            if hasattr(file.uploaded_by.role, "value")
+            else file.uploaded_by.role,
             "firm_id": file.uploaded_by.firm_id,
             "is_firm_admin": file.uploaded_by.is_firm_admin,
             "is_verified": file.uploaded_by.is_verified,
-            "created_at": file.uploaded_by.created_at.isoformat() if file.uploaded_by.created_at else None,
-        } if file.uploaded_by else None,
+            "created_at": file.uploaded_by.created_at.isoformat()
+            if file.uploaded_by.created_at
+            else None,
+        }
+        if file.uploaded_by
+        else None,
         "created_at": file.created_at,
         "updated_at": file.updated_at,
     }
@@ -1245,6 +1287,7 @@ def build_comparison_payload(
 
 # ── Storage lifecycle (T8) ───────────────────────────────────
 
+
 async def report_storage_usage(
     db: AsyncSession,
     project_id: int | None = None,
@@ -1275,9 +1318,7 @@ async def report_storage_usage(
     ]
 
     if firm_id is not None:
-        proj_result = await db.execute(
-            select(Project.id).where(Project.firm_id == firm_id)
-        )
+        proj_result = await db.execute(select(Project.id).where(Project.firm_id == firm_id))
         firm_projects = {row[0] for row in proj_result.all()}
         firm_rows = [r for r in by_project if r["project_id"] in firm_projects]
         return {
@@ -1296,7 +1337,9 @@ async def report_storage_usage(
     }
 
 
-def list_orphaned_objects(s3: Any, bucket: str, known_keys: set[str], prefix: str = "uploads/") -> list[str]:
+def list_orphaned_objects(
+    s3: Any, bucket: str, known_keys: set[str], prefix: str = "uploads/"
+) -> list[str]:
     """S3 objects under `uploads/` not referenced by any revision record."""
     orphaned: list[str] = []
     paginator = s3.get_paginator("list_objects_v2")
@@ -1324,7 +1367,11 @@ def list_abandoned_multipart_uploads(
                 initialized = datetime.fromisoformat(initialized.replace("Z", "+00:00"))
             if initialized < older_than:
                 abandoned.append(
-                    {"key": upload["Key"], "upload_id": upload["UploadId"], "initiated": initialized}
+                    {
+                        "key": upload["Key"],
+                        "upload_id": upload["UploadId"],
+                        "initiated": initialized,
+                    }
                 )
     return abandoned
 

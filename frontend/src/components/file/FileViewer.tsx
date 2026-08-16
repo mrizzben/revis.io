@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getDownloadUrl } from '../../api/endpoints/files';
+import { getDownloadUrl, getPreviewUrl } from '../../api/endpoints/files';
 import { DesignFile, FileVersion } from '../../types';
 import Modal from '../ui/Modal';
 import Badge from '../ui/Badge';
@@ -33,72 +33,99 @@ function FileTypeIcon({ type, className = '' }: { type: string; className?: stri
   if (SUPPORTED_IMAGES.has(type)) {
     return (
       <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+        />
       </svg>
     );
   }
   if (type === 'pdf') {
     return (
       <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+        />
       </svg>
     );
   }
   if (SUPPORTED_3D.has(type)) {
     return (
       <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-          d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
+        />
       </svg>
     );
   }
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+      />
     </svg>
   );
 }
 
-export default function FileViewer({ file, isOpen, onClose, milestones, collaborators }: FileViewerProps) {
+export default function FileViewer({
+  file,
+  isOpen,
+  onClose,
+  milestones,
+  collaborators,
+}: FileViewerProps) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(false);
-  const [comparePair, setComparePair] = useState<{ from: FileVersion; to: FileVersion } | null>(null);
+  const [comparePair, setComparePair] = useState<{ from: FileVersion; to: FileVersion } | null>(
+    null,
+  );
 
   const user = useAuthStore((state) => state.user);
   const currentUserId = user?.id || 0;
   const isArchitect = user?.role === 'architect';
+  const isImage = SUPPORTED_IMAGES.has(file.file_type);
+  const isPdf = file.file_type === 'pdf';
+  const is3D = SUPPORTED_3D.has(file.file_type);
 
   useEffect(() => {
     if (!isOpen) return;
+    setPreviewUrl(null);
     setDownloadUrl(null);
     setError(null);
     setLoading(true);
 
-    getDownloadUrl(file.id)
-      .then(({ url }) => {
-        setDownloadUrl(url);
+    const previewRequest = isImage || isPdf ? getPreviewUrl(file.id) : Promise.resolve(null);
+    Promise.all([previewRequest, getDownloadUrl(file.id)])
+      .then(([preview, download]) => {
+        setPreviewUrl(preview);
+        setDownloadUrl(download.url);
         setLoading(false);
       })
       .catch(() => {
         setError('Failed to load file preview');
         setLoading(false);
       });
-  }, [file.id, isOpen]);
+  }, [file.id, isOpen, isImage, isPdf]);
 
   const handleDownload = () => {
     if (downloadUrl) {
       window.open(downloadUrl, '_blank');
     }
   };
-
-  const isImage = SUPPORTED_IMAGES.has(file.file_type);
-  const isPdf = file.file_type === 'pdf';
-  const is3D = SUPPORTED_3D.has(file.file_type);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg" title={file.filename} fullScreenMobile>
@@ -107,8 +134,11 @@ export default function FileViewer({ file, isOpen, onClose, milestones, collabor
           <Badge variant="info">{file.file_type.toUpperCase()}</Badge>
           <span>{formatBytes(file.file_size)}</span>
           {file.current_version && (
-            <Badge variant={file.current_version.visibility === 'client_issued' ? 'success' : 'default'}>
-              v{file.current_version.version_number} · {file.current_version.visibility.replace(/_/g, ' ')}
+            <Badge
+              variant={file.current_version.visibility === 'client_issued' ? 'success' : 'default'}
+            >
+              v{file.current_version.version_number} ·{' '}
+              {file.current_version.visibility.replace(/_/g, ' ')}
             </Badge>
           )}
           <span className="text-gray-400">
@@ -127,35 +157,33 @@ export default function FileViewer({ file, isOpen, onClose, milestones, collabor
           {!loading && error && (
             <div className="flex flex-col items-center gap-3 text-gray-400">
               <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <p className="text-sm">{error}</p>
             </div>
           )}
 
-          {!loading && !error && isImage && downloadUrl && (
+          {!loading && !error && isImage && previewUrl && (
             <img
-              src={downloadUrl}
+              src={previewUrl}
               alt={file.filename}
               className="max-w-full max-h-[70vh] object-contain"
             />
           )}
 
-          {!loading && !error && isPdf && downloadUrl && (
-            <iframe
-              src={downloadUrl}
-              title={file.filename}
-              className="w-full h-[70vh] border-0"
-            />
+          {!loading && !error && isPdf && previewUrl && (
+            <iframe src={previewUrl} title={file.filename} className="w-full h-[70vh] border-0" />
           )}
 
           {!loading && !error && is3D && (
             <div className="flex flex-col items-center gap-3 text-gray-400 p-8">
               <FileTypeIcon type={file.file_type} className="w-16 h-16 text-gray-300" />
-              <p className="text-sm text-center">
-                3D preview available for supported formats
-              </p>
+              <p className="text-sm text-center">3D preview available for supported formats</p>
               {downloadUrl && (
                 <a
                   href={downloadUrl}
@@ -182,8 +210,12 @@ export default function FileViewer({ file, isOpen, onClose, milestones, collabor
                   className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
                   </svg>
                   Download
                 </a>
@@ -199,8 +231,12 @@ export default function FileViewer({ file, isOpen, onClose, milestones, collabor
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
             </svg>
             Download
           </button>
@@ -238,7 +274,12 @@ export default function FileViewer({ file, isOpen, onClose, milestones, collabor
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
           {showComments && (

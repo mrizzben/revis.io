@@ -3,10 +3,10 @@ version: "3.8"
 x-common-env: &common-env
   DATABASE_URL: postgresql+asyncpg://revis.io:revis.io@postgres:5432/revis.io
   REDIS_URL: redis://redis:6379
-  S3_ENDPOINT: http://minio:9000
+  S3_ENDPOINT: http://rustfs:9000
   S3_PRESIGNED_ENDPOINT: http://localhost:9000
-  S3_ACCESS_KEY: minioadmin
-  S3_SECRET_KEY: minioadmin
+  S3_ACCESS_KEY: rustfsadmin
+  S3_SECRET_KEY: rustfsadmin
   S3_BUCKET: revis.io
   S3_REGION: us-east-1
   SECRET_KEY: dev-secret-key-change-in-production
@@ -45,22 +45,38 @@ services:
       timeout: 5s
       retries: 5
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+  rustfs:
+    image: rustfs/rustfs:latest
+    depends_on:
+      rustfs-permissions:
+        condition: service_completed_successfully
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000" # S3 API
+      - "9001:9001" # Console
+    environment:
+      RUSTFS_VOLUMES: /data/rustfs0
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+      # Allow browser presigned uploads/downloads from the SPA.
+      RUSTFS_CORS_ALLOWED_ORIGINS: http://localhost:5173
     volumes:
-      - minio_data:/data
+      - rustfs_data:/data/rustfs0
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/health"]
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 40s
+
+  rustfs-permissions:
+    image: alpine
+    volumes:
+      - rustfs_data:/data
+    command: sh -c "chown -R 10001:10001 /data && echo permissions-fixed"
+    restart: "no"
 
   backend:
     build:
@@ -77,7 +93,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
+      rustfs:
         condition: service_healthy
     volumes:
       - ./backend/src:/app/src
@@ -94,7 +110,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
+      rustfs:
         condition: service_healthy
     volumes:
       - ./backend/src:/app/src
@@ -114,4 +130,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
+  rustfs_data:
