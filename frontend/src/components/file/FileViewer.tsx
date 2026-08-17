@@ -97,6 +97,7 @@ export default function FileViewer({
   const user = useAuthStore((state) => state.user);
   const currentUserId = user?.id || 0;
   const isArchitect = user?.role === 'architect';
+  const isClient = user?.role === 'client';
   const isImage = SUPPORTED_IMAGES.has(file.file_type);
   const isPdf = file.file_type === 'pdf';
   const is3D = SUPPORTED_3D.has(file.file_type);
@@ -242,13 +243,15 @@ export default function FileViewer({
           </button>
         </div>
 
-        {/* Revision history (T1/T2/T7/T8) */}
-        <RevisionPanel
-          file={file}
-          isArchitect={isArchitect}
-          milestones={milestones}
-          onOpenCompare={(from, to) => setComparePair({ from, to })}
-        />
+        {/* Revision history (T1/T2/T7/T8) — internal team only; clients get no revision option */}
+        {!isClient && (
+          <RevisionPanel
+            file={file}
+            isArchitect={isArchitect}
+            milestones={milestones}
+            onOpenCompare={(from, to) => setComparePair({ from, to })}
+          />
+        )}
 
         {/* Review workflow (T3) — internal team */}
         {isArchitect && (

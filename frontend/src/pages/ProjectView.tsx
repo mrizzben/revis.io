@@ -21,6 +21,11 @@ export default function ProjectView() {
   const projectIdNum = Number(projectId);
   const { isConnected, isPolling } = useWebSocket(projectIdNum || null);
 
+  const currentUser = useAuthStore((s) => s.user);
+  // Clients (registered + anonymous secure-link sessions) get a read-only view:
+  // timeline and board only, no file list, no project-management panels.
+  const isClient = currentUser?.role === 'client';
+
   const {
     data: project,
     isLoading,
@@ -35,7 +40,7 @@ export default function ProjectView() {
   const { data: files, isLoading: filesLoading } = useQuery({
     queryKey: ['files', projectIdNum],
     queryFn: () => listProjectFiles(projectIdNum),
-    enabled: !!projectIdNum,
+    enabled: !!projectIdNum && !isClient,
   });
 
   const { data: milestones, isLoading: milestonesLoading } = useQuery({
@@ -51,7 +56,6 @@ export default function ProjectView() {
     enabled: !!projectIdNum,
     retry: false,
   });
-  const currentUser = useAuthStore((s) => s.user);
   const isInternal = !!collabData;
   const currentUserIsOwner = !!currentUser && project?.owner_id === currentUser.id;
   const collaborators = collabData?.collaborators ?? [];
@@ -95,23 +99,25 @@ export default function ProjectView() {
         </div>
       </div>
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-primary-600">{project.file_count}</p>
-          <p className="text-sm text-gray-500">Files</p>
+      {/* Stats bar — internal team only; clients see just the timeline/board */}
+      {!isClient && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="card text-center">
+            <p className="text-2xl font-bold text-primary-600">{project.file_count}</p>
+            <p className="text-sm text-gray-500">Files</p>
+          </div>
+          <div className="card text-center">
+            <p className="text-2xl font-bold text-primary-600">{project.milestone_count}</p>
+            <p className="text-sm text-gray-500">Milestones</p>
+          </div>
+          <div className="card text-center">
+            <p className="text-2xl font-bold text-gray-600">
+              {new Date(project.updated_at).toLocaleDateString()}
+            </p>
+            <p className="text-sm text-gray-500">Last Updated</p>
+          </div>
         </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-primary-600">{project.milestone_count}</p>
-          <p className="text-sm text-gray-500">Milestones</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-gray-600">
-            {new Date(project.updated_at).toLocaleDateString()}
-          </p>
-          <p className="text-sm text-gray-500">Last Updated</p>
-        </div>
-      </div>
+      )}
 
       {/* Milestone Timeline / Board */}
       <div className="mb-8">
@@ -183,72 +189,77 @@ export default function ProjectView() {
           ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main area: File list */}
-        <div className="lg:col-span-2 order-2 lg:order-1">
-          {filesLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="card animate-pulse p-0 overflow-hidden">
-                  <div className="aspect-square bg-gray-200" />
-                  <div className="p-3 space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-3/4" />
-                    <div className="h-3 bg-gray-200 rounded w-1/2" />
+      {/* Files + sidebar — internal team only; clients get timeline/board only */}
+      {!isClient && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main area: File list */}
+          <div className="lg:col-span-2 order-2 lg:order-1">
+            {filesLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="card animate-pulse p-0 overflow-hidden">
+                    <div className="aspect-square bg-gray-200" />
+                    <div className="p-3 space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-3/4" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : files && files.length > 0 ? (
-            <FileList files={files} projectId={projectIdNum} />
-          ) : (
-            <div className="card text-center py-12">
-              <svg
-                className="w-12 h-12 text-gray-300 mx-auto mb-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                />
-              </svg>
-              <p className="text-gray-900 font-medium mb-1">No design files uploaded yet.</p>
-              <p className="text-gray-500 text-sm">The architect will share files here.</p>
-            </div>
-          )}
-        </div>
-
-        {/* Side panel: Project info + activity */}
-        <div className="order-1 lg:order-2 space-y-6">
-          <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Project Info</h2>
-            <div className="space-y-3 text-sm">
-              <div>
-                <p className="text-gray-500">Architect</p>
-                <p className="text-gray-900">{project.files?.[0]?.uploaded_by?.name || '—'}</p>
+                ))}
               </div>
-              <div>
-                <p className="text-gray-500">Firm</p>
-                <p className="text-gray-900">
-                  {project.firm_id ? `Firm #${project.firm_id}` : '—'}
-                </p>
+            ) : files && files.length > 0 ? (
+              <FileList files={files} projectId={projectIdNum} />
+            ) : (
+              <div className="card text-center py-12">
+                <svg
+                  className="w-12 h-12 text-gray-300 mx-auto mb-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                  />
+                </svg>
+                <p className="text-gray-900 font-medium mb-1">No design files uploaded yet.</p>
+                <p className="text-gray-500 text-sm">The architect will share files here.</p>
               </div>
-              <div>
-                <p className="text-gray-500">Created</p>
-                <p className="text-gray-900">{new Date(project.created_at).toLocaleDateString()}</p>
-              </div>
-            </div>
+            )}
           </div>
 
-          <ActivityTimeline projectId={projectIdNum} />
+          {/* Side panel: Project info + activity */}
+          <div className="order-1 lg:order-2 space-y-6">
+            <div className="card">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Project Info</h2>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="text-gray-500">Architect</p>
+                  <p className="text-gray-900">{project.files?.[0]?.uploaded_by?.name || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Firm</p>
+                  <p className="text-gray-900">
+                    {project.firm_id ? `Firm #${project.firm_id}` : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Created</p>
+                  <p className="text-gray-900">
+                    {new Date(project.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <ActivityTimeline projectId={projectIdNum} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Internal team workspace — rendered only for owner/collaborators */}
-      {isInternal && currentUser && (
+      {!isClient && isInternal && currentUser && (
         <InternalPanel
           projectId={projectIdNum}
           currentUserId={currentUser.id}
