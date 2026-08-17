@@ -10,12 +10,21 @@
 
 ## Project Summary
 
-A real-time web application where architects present design files to clients, track milestone progress, and receive client feedback. Architects create projects, upload design files (CAD, PDF, images, 3D models) to S3, and invite clients via email. Clients view designs in near real-time as the architect updates files, with milestone tracking and contextual commenting. Firm accounts provide organizational ownership and project reassignment.
+A real-time web application where architects present design files to clients, track milestone progress, and receive client feedback. Architects create projects, upload design files (CAD, PDF, images, 3D models) to S3, and invite clients via email — or share a secure link for zero-signup access. Clients view designs in near real-time as the architect updates files, with milestone tracking and contextual commenting. Architects and their teams collaborate on revisions internally before issuing them to clients, with full version and audit history. Firm accounts provide organizational ownership and project reassignment.
+
+## Key Features
+
+- **Authentication**: Email/password sign-up with verification and forgot-password/reset flow, or **Google OAuth** sign-in/sign-up (optional; enable with `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`)
+- **Access models**: App **admin role** with platform-wide visibility, **firm accounts** with ownership and project reassignment, and **client secure links** — token-based access so clients can view projects without signing up
+- **Team collaboration**: Project collaborators, internal notes with `@mentions` and threaded replies, and assignable/status-tracked to-dos — all internal content is hidden from clients
+- **Revision management**: Versioned design files with an explicit workflow — internal review → issue to client → supersede → archive, plus restore, named checkpoints, revision-scoped comments, **design options** for parallel exploration, and an append-only **activity feed**
+- **Real-time updates**: WebSocket push for file changes, comments, notifications, and team activity
+- **Large-file support**: Presigned multipart uploads up to 1GB, auto-generated thumbnails/previews, inline viewing of PDFs and images
 
 ## Technical Stack
 
 - **Languages**: Backend: Python 3.12; Frontend: TypeScript 5 + React 18
-- **Primary Dependencies**: FastAPI (async HTTP + WebSockets), SQLAlchemy 2.x (async ORM), boto3 (S3), React Router 6, Zustand (state management), TanStack Query (server state), Tailwind CSS
+- **Primary Dependencies**: FastAPI (async HTTP + WebSockets), SQLAlchemy 2.x (async ORM), boto3 (S3), Google OAuth, Resend (email), ARQ (task queue), React Router 6, Zustand (state management), TanStack Query (server state), Tailwind CSS
 - **Storage**: PostgreSQL 16 (metadata, users, projects, milestones, comments) + S3-compatible object storage (design files and thumbnails)
 - **Testing**: Backend: pytest + httpx (async); Frontend: Vitest + React Testing Library
 - **Performance Goals**: 500 concurrent users, real-time file update propagation <10 seconds, API p95 latency <200ms
@@ -62,8 +71,16 @@ cd backend
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env  # Edit .env with your values
+# Optional: set GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET to enable Google sign-in
 alembic upgrade head
 uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+In a second terminal, start the background worker (thumbnails):
+
+```bash
+cd backend && source .venv/bin/activate
+arq src.services.thumbnail.WorkerSettings
 ```
 
 **Frontend:**
