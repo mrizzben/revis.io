@@ -101,6 +101,18 @@ async def test_authorize_disabled_returns_503(oauth_client, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_providers_reflects_oauth_config(oauth_client, monkeypatch):
+    """Providers endpoint reports google availability from config."""
+    resp = await oauth_client.get("/api/auth/providers")
+    assert resp.status_code == 200
+    assert resp.json() == {"google": True}
+
+    monkeypatch.setattr(oauth_service, "oauth_enabled", lambda: False)
+    resp = await oauth_client.get("/api/auth/providers")
+    assert resp.json() == {"google": False}
+
+
+@pytest.mark.asyncio
 async def test_callback_creates_new_user(oauth_client, db_session):
     """First-time Google login creates an architect user and redirects with tokens."""
     state = await _start_oauth(oauth_client)

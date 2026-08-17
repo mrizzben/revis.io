@@ -46,6 +46,12 @@ export async function verifyEmail(token: string): Promise<{ message: string }> {
   return response.data;
 }
 
+export async function getProviders(): Promise<{ google: boolean }> {
+  const response = await apiClient.get('/auth/providers');
+  return response.data;
+}
+
+
 export async function getMe(): Promise<User> {
   const response = await apiClient.get('/users/me');
   return response.data;

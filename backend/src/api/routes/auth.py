@@ -28,6 +28,12 @@ reset_password_limiter = RateLimiter(max_requests=5, window_seconds=3600)
 oauth_callback_limiter = RateLimiter(max_requests=10, window_seconds=3600)
 
 
+@router.get("/providers")
+async def auth_providers():
+    """Public: which social auth providers are available."""
+    return {"google": oauth_service.oauth_enabled()}
+
+
 @router.get("/google/authorize")
 async def google_authorize():
     """Start Google OAuth: set a state cookie and redirect to Google's consent screen."""
