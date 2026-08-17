@@ -312,6 +312,31 @@ async def test_anonymous_session_cannot_access_internal_routes(client, auth_head
     assert resp.status_code == 404
 
 
+async def test_anonymous_session_me_profile(client, auth_headers, project):
+    """The frontend fetches /users/me right after password auth; it must not 500."""
+    token = (
+        await client.post(
+            f"/api/projects/{project.id}/client-access",
+            json={"password": "client-pass-123"},
+            headers=auth_headers,
+        )
+    ).json()["token"]
+    session = (
+        await client.post(
+            "/api/client-access/authenticate",
+            json={"token": token, "password": "client-pass-123"},
+        )
+    ).json()
+    guest_headers = {"Authorization": f"Bearer {session['access_token']}"}
+
+    resp = await client.get("/api/users/me", headers=guest_headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["role"] == "client"
+    assert body["client_project_id"] == project.id
+    assert "created_at" in body
+
+
 async def test_disable_client_access_revokes_sessions(client, auth_headers, project):
     token = (
         await client.post(

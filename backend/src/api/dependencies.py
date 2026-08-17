@@ -40,6 +40,8 @@ class ClientSession:
         self.is_firm_admin = user.is_firm_admin
         self.is_verified = user.is_verified
         self.is_active = user.is_active
+        self.created_at = user.created_at
+        self.updated_at = user.updated_at
         self.client_project_id = project_id
 
 
