@@ -151,7 +151,7 @@ async def get_current_participant(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid client session",
-            )
+            ) from None
         return ClientSession(user, client_project_id)
     return user
 
