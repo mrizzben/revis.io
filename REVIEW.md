@@ -1,4 +1,46 @@
-# Review: In-Flight Revision-Management Changes vs TARGETS.md
+# Review: Three Parallel Feature Lanes → development (2026-08-30)
+
+**Date**: 2026-08-30 · **Scope**: reviewer-side review of 3 parallel lanes, each developed by a subagent in an isolated git worktree on its own branch, then merged to `development` by the reviewer.
+
+## The lanes
+
+| Lane | Branch (@ base `790894c`) | Commits | What it ships |
+| --- | --- | --- | --- |
+| A — T4 Phase 2 diff engine (backend) | `features/t4-diff-backend` | `ab98a5a` | `services/diffing.py` (rasterize + letterbox-align pages, per-page `diff_ratio`, grid-merged change regions, WebP highlight overlays → S3), additive `diff` key on compare payload, ARQ job for PDFs > 20 pages (budget ceiling), sync-budget enforcement, `GET /files/{id}/compare/{job_id}` poll route |
+| B — T8 auto-maintenance + clamav | `features/t8-maintenance` | `353f9ec` | `services/maintenance.py` (single `run_maintenance()` owner, errors collected not raised), lifespan scheduler (`STORAGE_MAINTENANCE_INTERVAL_SECONDS`, 60s startup delay, cancel-on-shutdown, `ponytail:` single-instance note), thin admin route delegate, clamav compose service + `CLAMD_HOST/PORT` |
+| C — T4 Phase 2 compare UX (frontend) | `features/t4-diff-frontend` | `c293cb8` | `DiffView` in `CompareModal` (thumbnail page list with per-page diff badge, page-aligned side-by-side, overlay toggle + region-box fallback, pending polling at 2s), `getCompareJob()`, additive `RevisionDiff` types; light theme matches repo |
+
+Each lane enforced by contract: additive `diff` key with exact shape (`status=ready|pending|unavailable`, `poll_url`, `page_count`, `pages[]` with `page_number/width/height/diff_ratio/changed/regions[{x,y,w,h,kind}]/from_url/to_url/overlay_url`). Lane C consumes exactly what A emits — verified field-for-field.
+
+## Review findings (per lane)
+
+- **A — approved.** Access control on both compare routes matches the POST semantics (participant gate + client only sees `client_issued`/`superseded`); `job_id` format validated (`diff:{file_id}:{from}:{to}`) before touching Redis; CPU work under `asyncio.to_thread`; deterministic S3 keys under `derive/{file_id}/diff/{from}-{to}` (idempotent overwrite); region boxes clamped to canvas. Verified `arq.jobs.Job.result(timeout=0)` semantics from installed arq source — non-blocking (`TimeoutError` on first poll when unfinished) — so the poll endpoint returns `pending` instead of long-polling. Nits (non-blocking): mask threshold is luminance-weighted rather than per-channel delta (docstring slightly overstates; fine for drawing sheets); poll stays `pending` forever if arq result GCs before poll (repo WorkerSettings sets no result retention).
+- **B — approved.** Admin/firm-admin gate preserved verbatim on the maintenance route; response keys preserved, `errors` added (abort failures now collected instead of 503 — better partial-failure behavior, documented). Scheduler: startup delay, per-run try/except, cancel + `suppress(CancelledError)` on shutdown. `clamdcheck` healthcheck is the standard clamav/clamav:stable script (unverified against a live container — dev compose only).
+- **B — escalated deviation, approved.** Lane exposed a pre-existing latent bug: `purge_soft_deleted` lazy-loads `DesignFile.versions` on an AsyncSession → `MissingGreenlet` the moment a soft-deleted file reaches retention (the old `/storage/maintenance` route had the same untested bug). Child escalated via supervisor; decision (a) approved: one-line root-cause fix — `selectinload(DesignFile.versions)` on the purge select. Fix verified as exactly that (plus function-local import).
+- **C — approved.** Contract match exact; `diff: RevisionDiff | null` keeps the type additive and degrades with an old backend; poll loop bounded (`refetchInterval` only while `status==='pending'`, disabled once ready); `NoRender` handles unchanged pages (backend returns null URLs for unchanged) and `unavailable` falls through to the legacy supported/unsupported flow. `tsc -b` exit 0.
+
+## Merge incident (caught during review)
+
+Lane C's worktree setup fell through and the child ran in the **main checkout**, leaving the main repo on `features/t4-diff-frontend`. My first two merges therefore landed on that branch (merges `77fa62a`, `a32273e`) instead of `development`. Detectable in the merge parents; repaired before any push: `development` merged the integrated tree (`9337a7b`), local feature branches deleted (remote `origin/features/*` kept as pushed record). No content was lost or duplicated; working tree verified clean. Guard: check `git branch --show-current` before merging after parallel work.
+
+## Verification on merged `development` (`9337a7b`)
+
+- Backend: **116 passed** (104 baseline + 6 diffing + 6 maintenance).
+- Frontend: `npx tsc -b` exit 0.
+- `development` pushed to origin (`790894c..9337a7b`).
+
+## Residual risks (known, accepted)
+
+- ARQ async path (enqueue → poll → ready) not exercised against a live Redis/worker in CI; unit-tested via `enforce_budget=False` semantics. Worker run is needed to prove the compose worker picks up `diffing.generate_revision_diff`.
+- `clamav/clamav:stable` healthcheck + scan path unverified against a real container (dev compose only; `scan_object_with_clamd` was green-path code before this round).
+- Scheduler is single-app-instance (`ponytail:` comment) — a second API instance would need a beat process.
+- Luminance-weighted pixel mask may miss pure-hue changes without luminance delta; acceptable for drawing sheets.
+
+---
+
+# Review: In-Flight Revision-Management Changes vs TARGETS.md (2026-08-15 — resolved/superseded)
+
+**Status note**: the below review predates the T1–T8 implementation round. Its blockers (F1/F2 ambiguous joins) are fixed and the whole target set is implemented and green (see current `RESEARCH.md`).
 
 **Date**: 2026-08-15 · **Scope**: uncommitted work-in-progress on `development`
 (new/changed files under `backend/`), reviewed against [`TARGETS.md`](./TARGETS.md).

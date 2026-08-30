@@ -56,9 +56,25 @@ edge case) exists. This is the biggest mismatch with the product's own positioni
 
 ---
 
-## Current Status (2026-08-08 → 2026-08-09)
+## Current Status (2026-08-08 → 2026-08-30)
 
-### #1 Internal team collaboration — implemented, tests green, merged
+### T1/T2/T3/T5/T6/T7 (+ T4 Phase 1) — implemented, merged
+
+Built on `specs/005-revision-management/` (plan: `specs/005-revision-management/plan.md`) — file revisions (upload a new version onto a stable file identity, version list/download/restore, revision messages), named checkpoints/issue state machine (draft → review → issued → superseded → archived, explicit issue action), the review workflow (`Review` + statuses, request/assign/transition, client-scoped reviews), design options (create/fork/promote/archive), append-only visibility-scoped activity timeline, revision-level visibility (`CLIENT_VISIBLE_VISIBILITIES` enforced on file list, download, thumbnails, compare, reviews, activity), and file integrity/lifecycle basics (content hash, dedupe, clamd scan, soft-delete, storage usage/orphans). Routes added under `src/api/routes/{files,reviews,options,storage,activity}.py`; frontend `components/revision/`, `components/activity/`, `components/options/`; WS invalidation for `revision_*`/`review_*` events. Migration `003_revision_management.py`. Baseline suite: **104 passed** at this stage.
+
+### 2026-08-30 — T4 Phase 2 + T8 automation (3 parallel lanes, merged)
+
+Three subagent lanes developed in isolated git worktrees on separate branches and merged to `development` as reviewed (`9337a7b`, pushed). See [REVIEW.md](./REVIEW.md) for the full per-lane review.
+
+- **T4 Phase 2 (backend)** — `backend/src/services/diffing.py`: PyMuPDF rasterization (72 DPI), letterbox page alignment, per-page `diff_ratio` + grid-merged change regions (added/removed/modified), WebP highlight overlays to S3, ARQ job for PDFs over the 20-page sync budget, poll endpoint. Additive `diff` key on the compare payload.
+- **T4 Phase 2 (frontend)** — `CompareModal` `DiffView`: thumbnail page list with per-page diff badge, page-aligned side-by-side, overlay toggle with region-box fallback, pending-job polling.
+- **T8 automation** — `backend/src/services/maintenance.py` (single `run_maintenance()` owner), lifespan scheduler (`STORAGE_MAINTENANCE_INTERVAL_SECONDS`), clamav service in compose. Also fixed a pre-existing latent `MissingGreenlet` in `purge_soft_deleted` (one-line `selectinload`; bug was never reachable until the purge path was actually exercised).
+
+Verification: backend **116 passed** (104 + 12 new), frontend `tsc -b` exit 0. Known accepted risks and next verification steps are listed in REVIEW.md (ARQ path vs live Redis/worker, live clamd container).
+
+### Earlier rounds (kept for context)
+
+#### #1 Internal team collaboration — implemented, tests green, merged
 
 Built on branch `004-team-collaboration` as `specs/004-team-collaboration/` (planning docs: [spec](specs/004-team-collaboration/spec.md), [research](specs/004-team-collaboration/research.md), [plan](specs/004-team-collaboration/plan.md), [data-model](specs/004-team-collaboration/data-model.md), [contracts](specs/004-team-collaboration/contracts/api.md), [tasks](specs/004-team-collaboration/tasks.md)).
 
