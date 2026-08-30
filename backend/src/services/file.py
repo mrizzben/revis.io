@@ -1405,8 +1405,12 @@ async def purge_soft_deleted(db: AsyncSession, older_than: datetime) -> int:
     S3 objects are deleted only when no remaining revision references them
     (deduplicated content is preserved).
     """
+    from sqlalchemy.orm import selectinload
+
     result = await db.execute(
-        select(DesignFile).where(
+        select(DesignFile)
+        .options(selectinload(DesignFile.versions))
+        .where(
             DesignFile.is_deleted.is_(True),
             DesignFile.updated_at < older_than,
         )

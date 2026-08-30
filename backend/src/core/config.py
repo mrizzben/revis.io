@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     MULTIPART_ABANDON_AFTER_SECONDS: int = 7 * 24 * 3600
     # Soft-deleted design items are hard-deleted after this retention window.
     SOFT_DELETE_RETENTION_SECONDS: int = 30 * 24 * 3600
+    # How often the lifespan background task runs storage maintenance (T8).
+    STORAGE_MAINTENANCE_INTERVAL_SECONDS: int = 6 * 3600
 
     # Email
     RESEND_API_KEY: str = ""
