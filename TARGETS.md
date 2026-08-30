@@ -28,7 +28,11 @@ A design item is the stable identity. An uploaded object is a revision of that i
 
 ## Priority Targets
 
+**Implementation status: all targets below are implemented as of 2026-08-30** and merged to `development` (`9337a7b`, pushed). T1–T3, T5–T7 landed in the revision-management round (`8de258f`); T4 Phase 2 and T8 automation landed in the three-parallel-lane round (`9337a7b`, see `REVIEW.md`). Backend 116 tests green, frontend `tsc` clean. Remaining work is verification/deployment hardening, not features — live ARQ worker, live clamd container, retention at scale — listed under [Delivered vs still-to-prove](#delivered-vs-still-to-prove).
+
 ### T1 — File revisions
+
+**Status: ✅ implemented** — separate upload-complete records a version on the stable file identity; version list/download/restore routes; revision messages; revision-scoped comments kept.
 
 **Goal:** Preserve the identity and complete history of a design file while allowing new uploads.
 
@@ -59,6 +63,8 @@ Done when:
 
 ### T2 — Named checkpoints and issues
 
+**Status: ✅ implemented** — name/description/revision_message; issue/supersede/archive endpoints; explicit issue action (never a side effect of upload); client sees only issued/superseded.
+
 **Goal:** Give revisions architectural meaning instead of exposing only raw upload history.
 
 Required behavior:
@@ -85,6 +91,8 @@ Done when:
 
 ### T3 — Review workflow
 
+**Status: ✅ implemented** — request/assign/transition (`draft → in_review → changes_requested/approved`), decision audit, client-scoped reviews, internal-team notifications.
+
 **Goal:** Turn comments into an explicit design review process.
 
 Required behavior:
@@ -110,6 +118,8 @@ Done when:
 - Clients only participate in reviews explicitly opened to them.
 
 ### T4 — Comparison
+
+**Status: ✅ implemented (Phase 1 + Phase 2)** — metadata + side-by-side/overlay (Phase 1) and server-side PDF change highlighting, page alignment, per-page diff metrics/badges (Phase 2, `diffing.py` + `CompareModal` DiffView). CAD/BIM/3D diffing remains deferred (below).
 
 **Goal:** Make revision changes understandable without requiring external software.
 
@@ -140,6 +150,8 @@ Done when:
 
 ### T5 — Design options
 
+**Status: ✅ implemented** — create/fork/promote/archive; archived options hidden from client view; history preserved.
+
 **Goal:** Support parallel design exploration without implementing arbitrary Git branches.
 
 Use the architectural term **design option**, not branch.
@@ -166,6 +178,8 @@ Done when:
 - No revision history is destroyed when an option is rejected.
 
 ### T6 — Activity and audit history
+
+**Status: ✅ implemented** — append-only `ActivityEvent`, visibility-scoped timelines, event-type filter, callers wired into upload/issue/review paths.
 
 **Goal:** Provide a durable explanation of what happened in a project.
 
@@ -212,6 +226,8 @@ Done when:
 
 ### T7 — Revision-level visibility and permissions
 
+**Status: ✅ implemented** — `CLIENT_VISIBLE_VISIBILITIES` enforced across file list, download, thumbnails, compare, reviews, activity, WS; issue is explicit.
+
 **Goal:** Ensure uploaded work is not automatically client-visible.
 
 Minimum visibility levels:
@@ -237,6 +253,8 @@ Done when:
 
 ### T8 — File identity, integrity, and storage lifecycle
 
+**Status: ✅ implemented** — content hash, dedupe, clamd INSTREAM scan (issue blocked while infected), abandoned-multipart cleanup, soft-delete → hard purge, storage usage/orphans, and a scheduled auto-maintenance loop (`9337a7b`).
+
 **Goal:** Make large architectural files safe and predictable to manage.
 
 Required behavior:
@@ -259,20 +277,17 @@ Done when:
 
 ## Suggested Delivery Order
 
-1. **T1 — File revisions**
-2. **T2 — Named checkpoints and issues**
-3. **T3 — Review workflow**
-4. **T6 — Activity and audit history**
-5. **T7 — Revision-level visibility and permissions**
-6. **T4 — PDF/image comparison**
-7. **T8 — File integrity and storage lifecycle**
-8. **T5 — Design options**
+**Completed** — the original order (T1 → T2 → T3 → T6 → T7 → T4 → T8 → T5) shipped in two rounds; all eight are in `development`.
 
-The first three targets create the core product loop:
+## Delivered vs still-to-prove
 
-```text
-upload revision → review → issue to client → supersede or restore
-```
+Implemented code behind every target, but three operational paths are verified at unit level only and need a live environment to prove:
+
+- ARQ diff job (enqueue → poll → ready) against a running Redis + compose worker.
+- clamd malware scan against a real clamav container (`docker compose up clamav`, healthcheck + an infected-fixture scan).
+- Retention/abandoned-upload maintenance at scale (scheduler runs every 6h; watch `aborted_multipart_uploads`/`purged_soft_deleted_files` in logs).
+
+Adding a CI job that runs the compose stack (postgres + redis + rustfs + clamav + worker) and exercises these would close the gap.
 
 ## Explicitly Not Targets Yet
 
