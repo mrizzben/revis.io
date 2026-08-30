@@ -1,13 +1,12 @@
 """Storage lifecycle routes (T8): maintenance, usage, orphans, retention."""
 
-from datetime import UTC, datetime, timedelta
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.api.dependencies import DBSession, get_current_user
 from src.core.config import settings
 from src.models.user import User, UserRole
 from src.services import file as file_service
+from src.services import maintenance as maintenance_service
 
 router = APIRouter(prefix="/storage", tags=["Storage"])
 
@@ -17,7 +16,9 @@ async def _require_firm_or_owner(db: DBSession, user: User, project_id: int | No
     if user.role == UserRole.admin:
         return
     if user.role != UserRole.architect:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Architect access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Architect access required"
+        )
     if project_id is not None:
         from src.models.project import Project
 
@@ -25,9 +26,16 @@ async def _require_firm_or_owner(db: DBSession, user: User, project_id: int | No
         project = result.mappings().first()
         if project and project["owner_id"] == user.id:
             return
-        if project and project["firm_id"] and user.firm_id == project["firm_id"] and user.is_firm_admin:
+        if (
+            project
+            and project["firm_id"]
+            and user.firm_id == project["firm_id"]
+            and user.is_firm_admin
+        ):
             return
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this project")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this project"
+        )
 
 
 @router.get("/usage")
@@ -41,19 +49,20 @@ async def storage_usage(
     if project_id is not None:
         await _require_firm_or_owner(db, current_user, project_id)
     elif firm_id is not None:
-        if (current_user.role != UserRole.admin
-                and (current_user.role != UserRole.architect
-                     or current_user.firm_id != firm_id
-                     or not current_user.is_firm_admin)):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Firm admin access required")
+        if current_user.role != UserRole.admin and (
+            current_user.role != UserRole.architect
+            or current_user.firm_id != firm_id
+            or not current_user.is_firm_admin
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Firm admin access required"
+            )
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Provide project_id or firm_id",
         )
-    return await file_service.report_storage_usage(
-        db, project_id=project_id, firm_id=firm_id
-    )
+    return await file_service.report_storage_usage(db, project_id=project_id, firm_id=firm_id)
 
 
 @router.get("/orphans")
@@ -65,7 +74,9 @@ async def orphaned_objects(
     if current_user.role != UserRole.admin and (
         current_user.role != UserRole.architect or not current_user.is_firm_admin
     ):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Firm admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Firm admin access required"
+        )
 
     known_keys = await file_service.get_all_revision_keys(db)
     s3 = file_service._get_lazy_s3_client()
@@ -96,30 +107,10 @@ async def run_maintenance(
     if current_user.role != UserRole.admin and (
         current_user.role != UserRole.architect or not current_user.is_firm_admin
     ):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Firm admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Firm admin access required"
+        )
 
-    s3 = file_service._get_lazy_s3_client()
-    bucket = settings.S3_BUCKET
-    now = datetime.now(UTC)
-
-    multipart_cutoff = now - timedelta(days=abort_multipart_older_than_days)
-    abandoned = file_service.list_abandoned_multipart_uploads(s3, bucket, multipart_cutoff)
-    aborted = 0
-    for upload in abandoned:
-        try:
-            s3.abort_multipart_upload(Bucket=bucket, Key=upload["key"], UploadId=upload["upload_id"])
-            aborted += 1
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Failed to abort multipart upload: {e}",
-            ) from e
-
-    soft_delete_cutoff = now - timedelta(seconds=settings.SOFT_DELETE_RETENTION_SECONDS)
-    purged = await file_service.purge_soft_deleted(db, soft_delete_cutoff)
-
-    return {
-        "aborted_multipart_uploads": aborted,
-        "purged_soft_deleted_files": purged,
-        "retention_window_days": abort_multipart_older_than_days,
-    }
+    return await maintenance_service.run_maintenance(
+        db, abort_multipart_older_than_days=abort_multipart_older_than_days
+    )
