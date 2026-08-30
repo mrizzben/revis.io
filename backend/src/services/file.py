@@ -1255,19 +1255,36 @@ async def build_version_list_payload(
 
 COMPARABLE_TYPES = {"pdf", "png", "jpg", "jpeg", "webp"}
 
+_UNAVAILABLE_DIFF = {"status": "unavailable", "poll_url": None, "page_count": 0, "pages": []}
 
-def build_comparison_payload(
+
+async def build_comparison_payload(
     file: DesignFile,
     from_version: FileVersion,
     to_version: FileVersion,
+    diff_override: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Comparison metadata + presigned view URLs for two revisions.
 
     Unsupported formats get an explicit `unsupported` explanation instead of
     failing silently (T4: unsupported formats explain that comparison is
-    unavailable).
+    unavailable). The additive `diff` key (T4 Phase 2) carries per-page change
+    metrics and highlight overlays; a poll can supply `diff_override` on the
+    same shape instead of recomputing.
     """
     supported = file.file_type in COMPARABLE_TYPES
+    if not supported:
+        diff = _UNAVAILABLE_DIFF
+    elif diff_override is not None:
+        diff = diff_override
+    else:
+        from src.services import diffing
+
+        try:
+            diff = await diffing.compute_diff_or_enqueue(file, from_version, to_version)
+        except Exception:
+            logger.exception("Revision diff computation failed")
+            diff = dict(_UNAVAILABLE_DIFF)
     return {
         "file_id": str(file.id),
         "file_type": file.file_type,
@@ -1282,6 +1299,7 @@ def build_comparison_payload(
         ),
         "from": build_version_payload(from_version, with_download_url=supported),
         "to": build_version_payload(to_version, with_download_url=supported),
+        "diff": diff,
     }
 
 
@@ -1387,8 +1405,12 @@ async def purge_soft_deleted(db: AsyncSession, older_than: datetime) -> int:
     S3 objects are deleted only when no remaining revision references them
     (deduplicated content is preserved).
     """
+    from sqlalchemy.orm import selectinload
+
     result = await db.execute(
-        select(DesignFile).where(
+        select(DesignFile)
+        .options(selectinload(DesignFile.versions))
+        .where(
             DesignFile.is_deleted.is_(True),
             DesignFile.updated_at < older_than,
         )

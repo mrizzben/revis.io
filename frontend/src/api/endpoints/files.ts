@@ -221,6 +221,12 @@ export async function compareVersions(
   return response.data;
 }
 
+/** Poll a pending (async) revision diff job. jobId is the trailing segment of `diff.poll_url`. */
+export async function getCompareJob(fileId: string, jobId: string): Promise<ComparisonResult> {
+  const response = await apiClient.get(`/files/${fileId}/compare/${jobId}`);
+  return response.data;
+}
+
 export async function rescanVersion(
   fileId: string,
   versionNumber: number,

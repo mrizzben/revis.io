@@ -9,6 +9,8 @@ x-common-env: &common-env
   S3_SECRET_KEY: rustfsadmin
   S3_BUCKET: revis.io
   S3_REGION: us-east-1
+  CLAMD_HOST: clamav
+  CLAMD_PORT: "3310"
   SECRET_KEY: dev-secret-key-change-in-production
   RESEND_API_KEY: re_test_example
   EMAIL_FROM: Revis.io <noreply@revis.io.app>
@@ -82,6 +84,17 @@ services:
     command: sh -c "chown -R 10001:10001 /data && echo permissions-fixed"
     restart: "no"
 
+  clamav:
+    image: clamav/clamav:stable
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD", "clamdcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
   backend:
     build:
       context: ./backend
@@ -98,6 +111,8 @@ services:
       redis:
         condition: service_healthy
       rustfs:
+        condition: service_healthy
+      clamav:
         condition: service_healthy
     volumes:
       - ./backend/src:/app/src

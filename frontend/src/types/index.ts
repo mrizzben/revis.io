@@ -358,6 +358,35 @@ export interface ForkItemRequest {
 }
 
 // ── Comparison (T4) ────────────────────────────────────────
+export type DiffRegionKind = 'added' | 'removed' | 'modified';
+
+export interface DiffRegion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  kind: DiffRegionKind;
+}
+
+export interface DiffPage {
+  page_number: number;
+  width: number;
+  height: number;
+  diff_ratio: number;
+  changed: boolean;
+  regions: DiffRegion[];
+  from_url: string | null;
+  to_url: string | null;
+  overlay_url: string | null;
+}
+
+export interface RevisionDiff {
+  status: 'ready' | 'pending' | 'unavailable';
+  poll_url: string | null;
+  page_count: number;
+  pages: DiffPage[];
+}
+
 export interface ComparisonResult {
   file_id: string;
   file_type: string;
@@ -365,6 +394,7 @@ export interface ComparisonResult {
   explanation: string | null;
   from: FileVersion;
   to: FileVersion;
+  diff: RevisionDiff | null;
 }
 
 // ── Internal Collaboration ────────────────────────────────
