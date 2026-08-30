@@ -19,7 +19,11 @@ class WorkerSettings:
     """ARQ worker configuration."""
 
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
-    functions: list = ["src.services.thumbnail.generate_thumbnails", "src.services.thumbnail.generate_3d_preview"]
+    functions: list = [
+        "src.services.thumbnail.generate_thumbnails",
+        "src.services.thumbnail.generate_3d_preview",
+        "src.services.diffing.generate_revision_diff",
+    ]
     job_timeout = 120  # Default 120s
     max_jobs = 10
     allow_abort_jobs = True
@@ -27,6 +31,7 @@ class WorkerSettings:
     # Job-specific timeouts
     job_timeouts = {
         "generate_3d_preview": 180,
+        "generate_revision_diff": 300,
     }
 
 

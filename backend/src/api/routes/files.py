@@ -957,4 +957,54 @@ async def compare_versions(
         if from_version.visibility not in allowed or to_version.visibility not in allowed:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
 
-    return file_service.build_comparison_payload(file, from_version, to_version)
+    return await file_service.build_comparison_payload(file, from_version, to_version)
+
+
+@router.get("/{file_id}/compare/{job_id}")
+async def poll_compare_job(
+    file_id: str,
+    job_id: str,
+    db: DBSession,
+    current_user: User = Depends(get_current_participant),
+):
+    """Poll a background revision-diff job (T4 Phase 2 pending path).
+
+    Returns the same compare payload as ``POST /files/{id}/compare`` with the
+    diff result filled in once the job finishes; while it runs, the diff block
+    stays ``pending`` with the same ``poll_url``.
+    """
+    parts = job_id.split(":")
+    if len(parts) != 4 or parts[0] != "diff" or parts[1] != file_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diff job not found")
+    try:
+        from_number = int(parts[2])
+        to_number = int(parts[3])
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Diff job not found"
+        ) from None
+
+    file = await file_service.get_file(db, file_id)
+    await project_service._get_project_with_access(db, file.project_id, current_user)
+
+    from_version = await file_service.get_version(db, str(file.id), from_number)
+    to_version = await file_service.get_version(db, str(file.id), to_number)
+
+    if current_user.role == UserRole.client:
+        allowed = (RevisionVisibility.client_issued, RevisionVisibility.superseded)
+        if from_version.visibility not in allowed or to_version.visibility not in allowed:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+
+    from src.services import diffing
+
+    result = await diffing.get_diff_job_result(job_id)
+    if result is None:
+        result = {
+            "status": "pending",
+            "poll_url": f"/api/files/{file.id}/compare/{job_id}",
+            "page_count": 0,
+            "pages": [],
+        }
+    return await file_service.build_comparison_payload(
+        file, from_version, to_version, diff_override=result
+    )
