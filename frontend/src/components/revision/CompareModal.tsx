@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { compareVersions } from '../../api/endpoints/files';
+import { compareVersions, getCompareJob } from '../../api/endpoints/files';
 import Modal from '../ui/Modal';
 import Icon from '../ui/icons';
 import SegmentedControl from '../ui/SegmentedControl';
 import Spinner from '../ui/Spinner';
-import type { DesignFile, FileVersion } from '../../types';
+import type { DesignFile, DiffPage, DiffRegionKind, FileVersion } from '../../types';
 
 const SUPPORTED_IMAGES = new Set(['png', 'jpg', 'jpeg', 'webp']);
 
@@ -14,6 +14,171 @@ interface CompareModalProps {
   from: FileVersion;
   to: FileVersion;
   onClose: () => void;
+}
+
+function diffBadge(ratio: number) {
+  if (ratio < 0.01)
+    return { label: 'Unchanged', dot: 'bg-emerald-400', cls: 'bg-emerald-100 text-emerald-700' };
+  if (ratio < 0.1)
+    return { label: 'Minor', dot: 'bg-amber-400', cls: 'bg-amber-100 text-amber-700' };
+  return { label: 'Significant', dot: 'bg-red-400', cls: 'bg-red-100 text-red-700' };
+}
+
+const REGION_COLORS: Record<DiffRegionKind, string> = {
+  added: 'border-emerald-500 bg-emerald-400/25',
+  removed: 'border-red-500 bg-red-400/25',
+  modified: 'border-amber-500 bg-amber-400/25',
+};
+
+const pct = (value: number, total: number) => (total > 0 ? `${(value / total) * 100}%` : '0%');
+
+function NoRender() {
+  return (
+    <div className="w-full aspect-[4/3] rounded border border-gray-200 bg-gray-50 flex items-center justify-center text-xs text-gray-400">
+      No render requested
+    </div>
+  );
+}
+
+interface DiffViewProps {
+  pages: DiffPage[];
+  fromVersion: number;
+  toVersion: number;
+}
+
+/** T4 Phase 2: page list + page-aligned side-by-side + change highlighting. */
+function DiffView({ pages, fromVersion, toVersion }: DiffViewProps) {
+  const [selectedPage, setSelectedPage] = useState<number | null>(null);
+  const [showChanges, setShowChanges] = useState(true);
+  const page = pages.find((p) => p.page_number === selectedPage) ?? pages[0];
+  const badge = diffBadge(page.diff_ratio);
+
+  return (
+    <div className="flex gap-3">
+      {/* Thumbnail-level page list with per-page diff indicator */}
+      <div className="flex flex-col gap-1.5 w-44 shrink-0 max-h-[62vh] overflow-y-auto pr-1">
+        {pages.map((p) => {
+          const b = diffBadge(p.diff_ratio);
+          const selected = p.page_number === page.page_number;
+          return (
+            <button
+              key={p.page_number}
+              onClick={() => setSelectedPage(p.page_number)}
+              aria-pressed={selected}
+              className={`flex items-center gap-2 rounded-lg border p-1.5 text-left transition-colors ${
+                selected
+                  ? 'border-primary-500 bg-primary-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="relative w-12 h-12 shrink-0 rounded overflow-hidden border border-gray-200 bg-gray-100">
+                <img
+                  src={p.to_url ?? p.from_url ?? ''}
+                  alt={`Page ${p.page_number} thumbnail`}
+                  className="w-full h-full object-cover"
+                />
+                <span className={`absolute bottom-0 inset-x-0 h-1 ${b.dot}`} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-gray-800">Page {p.page_number}</p>
+                <p
+                  className={`text-[10px] font-semibold rounded px-1 py-0.5 inline-block ${b.cls}`}
+                >
+                  {b.label} · {Math.round(p.diff_ratio * 100)}%
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Page-aligned side-by-side with change highlighting */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-medium text-gray-500">
+            Page {page.page_number} · {page.width} × {page.height} px
+            <span className={`ml-2 rounded px-1.5 py-0.5 ${badge.cls}`}>
+              {Math.round(page.diff_ratio * 100)}% changed
+            </span>
+          </p>
+          <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showChanges}
+              onChange={(e) => setShowChanges(e.target.checked)}
+              className="accent-primary-600"
+            />
+            Show changes
+          </label>
+        </div>
+        <div className="overflow-auto max-h-[60vh] rounded-lg border border-gray-200">
+          <div className="grid grid-cols-2 gap-3 p-3 min-w-[480px]">
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-1">v{fromVersion}</p>
+              {page.from_url ? (
+                <img
+                  src={page.from_url}
+                  alt={`v${fromVersion} page ${page.page_number}`}
+                  className="w-full rounded border border-gray-100"
+                />
+              ) : (
+                <NoRender />
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-1">v{toVersion}</p>
+              <div className="relative">
+                {page.to_url ? (
+                  <img
+                    src={page.to_url}
+                    alt={`v${toVersion} page ${page.page_number}`}
+                    className="w-full rounded border border-gray-100"
+                  />
+                ) : (
+                  <NoRender />
+                )}
+                {showChanges &&
+                  page.to_url &&
+                  (page.overlay_url ? (
+                    <img
+                      src={page.overlay_url}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 w-full h-full pointer-events-none"
+                    />
+                  ) : (
+                    page.regions.map((r, i) => (
+                      <div
+                        key={`${r.x}-${r.y}-${r.w}-${r.h}-${i}`}
+                        className={`absolute border-2 pointer-events-none ${REGION_COLORS[r.kind]}`}
+                        style={{
+                          left: pct(r.x, page.width),
+                          top: pct(r.y, page.height),
+                          width: pct(r.w, page.width),
+                          height: pct(r.h, page.height),
+                        }}
+                      />
+                    ))
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        {showChanges && !page.overlay_url && page.regions.length > 0 && (
+          <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-600">
+            {(['added', 'removed', 'modified'] as const).map((kind) => (
+              <span key={kind} className="flex items-center gap-1 capitalize">
+                <span
+                  className={`inline-block w-3 h-3 rounded-sm border-2 ${REGION_COLORS[kind]}`}
+                />
+                {kind}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function CompareModal({ file, from, to, onClose }: CompareModalProps) {
@@ -27,7 +192,21 @@ export default function CompareModal({ file, from, to, onClose }: CompareModalPr
     queryFn: () => compareVersions(file.id, from.version_number, to.version_number),
   });
 
-  const result = data;
+  const jobId = data?.diff?.poll_url?.split('/').filter(Boolean).pop() || '';
+  const { data: polled } = useQuery({
+    queryKey: ['compare-poll', file.id, jobId],
+    queryFn: () => getCompareJob(file.id, jobId),
+    enabled: !!jobId && data?.diff?.status === 'pending',
+    refetchInterval: (query) => (query.state.data?.diff?.status === 'pending' ? 2000 : false),
+  });
+
+  // While a diff job is pending the polled response replaces the initial one.
+  const live = polled ?? data;
+  const pages = live?.diff?.pages ?? [];
+  const diffReady = live?.diff?.status === 'ready' && pages.length > 0;
+  const diffPending = live?.diff?.status === 'pending';
+
+  const result = live;
   const fromUrl = result?.from?.download_url;
   const toUrl = result?.to?.download_url;
 
@@ -112,7 +291,19 @@ export default function CompareModal({ file, from, to, onClose }: CompareModalPr
           </div>
         )}
 
-        {!isLoading && result?.supported && (
+        {!isLoading && result && diffPending && (
+          <div className="flex flex-col items-center gap-3 py-10 text-center text-gray-500">
+            <Spinner size="lg" />
+            <p className="text-sm">Computing diff…</p>
+            <p className="text-xs text-gray-400">Large PDFs can take a moment.</p>
+          </div>
+        )}
+
+        {!isLoading && result && diffReady && (
+          <DiffView pages={pages} fromVersion={from.version_number} toVersion={to.version_number} />
+        )}
+
+        {!isLoading && result?.supported && !diffPending && !diffReady && (
           <>
             {(isImage || isPdf) && (
               <div className="flex items-center gap-2 flex-wrap">
